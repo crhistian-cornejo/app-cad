@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-viewport-clear-dirty"
+description = "Enables the viewport_clear_dirty command without any pre-configured scope."
+commands.allow = ["viewport_clear_dirty"]
+
+[[permission]]
+identifier = "deny-viewport-clear-dirty"
+description = "Denies the viewport_clear_dirty command without any pre-configured scope."
+commands.deny = ["viewport_clear_dirty"]

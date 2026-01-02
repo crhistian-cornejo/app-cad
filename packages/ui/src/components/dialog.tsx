@@ -55,8 +55,9 @@ function DialogOverlay({ className, ...props }: DialogPrimitive.Backdrop.Props) 
     <DialogPrimitive.Backdrop
       data-slot="dialog-overlay"
       className={cn(
-        "data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs fixed inset-0 isolate z-50",
-        className
+        // Stronger overlay to separate window content; `z-50` kept consistent with menu.
+        "fixed inset-0 isolate z-50 bg-black/40 supports-backdrop-filter:backdrop-blur-sm data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 duration-150",
+        className,
       )}
       {...props}
     />
@@ -91,9 +92,14 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "bg-background data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 ring-foreground/10 grid max-w-[calc(100%-2rem)] gap-6 rounded-2xl p-6 text-sm ring-1 duration-100 fixed top-1/2 left-1/2 z-50 w-full -translate-x-1/2 -translate-y-1/2 outline-none",
+          // Use theme tokens; `bg-card` better matches panel surfaces.
+          // `z-50` matches overlay and menus; popup is rendered after backdrop so it stacks above.
+          "fixed top-1/2 left-1/2 z-50 w-full -translate-x-1/2 -translate-y-1/2 outline-none",
+          "grid max-w-[calc(100%-2rem)] gap-6 rounded-3xl p-6 text-sm",
+          "bg-card text-card-foreground border border-border shadow-2xl",
+          "data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 duration-150",
           sizeClasses[size],
-          className
+          className,
         )}
         {...props}
       >
@@ -101,7 +107,13 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            render={<Button variant="ghost" className="absolute top-4 right-4" size="icon-sm" />}
+            render={
+              <Button
+                variant="ghost"
+                className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+                size="icon-sm"
+              />
+            }
           >
             <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
             <span className="sr-only">Close</span>
@@ -156,7 +168,7 @@ function DialogDescription({ className, ...props }: DialogPrimitive.Description.
       data-slot="dialog-description"
       className={cn(
         "text-muted-foreground *:[a]:hover:text-foreground text-sm *:[a]:underline *:[a]:underline-offset-3",
-        className
+        className,
       )}
       {...props}
     />

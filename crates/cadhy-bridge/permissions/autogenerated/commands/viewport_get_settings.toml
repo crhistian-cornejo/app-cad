@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-viewport-get-settings"
+description = "Enables the viewport_get_settings command without any pre-configured scope."
+commands.allow = ["viewport_get_settings"]
+
+[[permission]]
+identifier = "deny-viewport-get-settings"
+description = "Denies the viewport_get_settings command without any pre-configured scope."
+commands.deny = ["viewport_get_settings"]

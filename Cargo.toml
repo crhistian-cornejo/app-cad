@@ -22,7 +22,7 @@ repository = "https://github.com/cadhy/cadhy"
 
 [workspace.dependencies]
 # Tauri
-tauri = { version = "2", features = ["macos-private-api"] }
+tauri = { version = "2", features = ["macos-private-api", "unstable"] }
 tauri-build = "2"
 tauri-plugin = "2"
 tauri-plugin-dialog = "2"

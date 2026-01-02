@@ -22,6 +22,19 @@ Default permissions for CADHY 3D plugin - grants access to all commands
 - `allow-viewport-zoom`
 - `allow-viewport-frame-selection`
 - `allow-viewport-frame-all`
+- `allow-viewport-set-view-mode`
+- `allow-viewport-get-view-mode`
+- `allow-viewport-reset-camera`
+- `allow-viewport-set-settings`
+- `allow-viewport-get-settings`
+- `allow-viewport-is-dirty`
+- `allow-viewport-clear-dirty`
+- `allow-viewport-init-native`
+- `allow-viewport-is-native`
+- `allow-viewport-update-bounds`
+- `allow-viewport-orbit-native`
+- `allow-viewport-pan-native`
+- `allow-viewport-zoom-native`
 - `allow-scene-get-objects`
 - `allow-scene-add-object`
 - `allow-scene-add-primitive`
@@ -461,6 +474,32 @@ Denies the scene_set_transform command without any pre-configured scope.
 <tr>
 <td>
 
+`cadhy-bridge:allow-viewport-clear-dirty`
+
+</td>
+<td>
+
+Enables the viewport_clear_dirty command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:deny-viewport-clear-dirty`
+
+</td>
+<td>
+
+Denies the viewport_clear_dirty command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `cadhy-bridge:allow-viewport-frame-all`
 
 </td>
@@ -539,6 +578,32 @@ Denies the viewport_get_camera command without any pre-configured scope.
 <tr>
 <td>
 
+`cadhy-bridge:allow-viewport-get-settings`
+
+</td>
+<td>
+
+Enables the viewport_get_settings command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:deny-viewport-get-settings`
+
+</td>
+<td>
+
+Denies the viewport_get_settings command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `cadhy-bridge:allow-viewport-get-size`
 
 </td>
@@ -558,6 +623,32 @@ Enables the viewport_get_size command without any pre-configured scope.
 <td>
 
 Denies the viewport_get_size command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:allow-viewport-get-view-mode`
+
+</td>
+<td>
+
+Enables the viewport_get_view_mode command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:deny-viewport-get-view-mode`
+
+</td>
+<td>
+
+Denies the viewport_get_view_mode command without any pre-configured scope.
 
 </td>
 </tr>
@@ -591,6 +682,58 @@ Denies the viewport_init command without any pre-configured scope.
 <tr>
 <td>
 
+`cadhy-bridge:allow-viewport-init-native`
+
+</td>
+<td>
+
+Enables the viewport_init_native command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:deny-viewport-init-native`
+
+</td>
+<td>
+
+Denies the viewport_init_native command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:allow-viewport-is-dirty`
+
+</td>
+<td>
+
+Enables the viewport_is_dirty command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:deny-viewport-is-dirty`
+
+</td>
+<td>
+
+Denies the viewport_is_dirty command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `cadhy-bridge:allow-viewport-is-initialized`
 
 </td>
@@ -610,6 +753,32 @@ Enables the viewport_is_initialized command without any pre-configured scope.
 <td>
 
 Denies the viewport_is_initialized command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:allow-viewport-is-native`
+
+</td>
+<td>
+
+Enables the viewport_is_native command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:deny-viewport-is-native`
+
+</td>
+<td>
+
+Denies the viewport_is_native command without any pre-configured scope.
 
 </td>
 </tr>
@@ -643,6 +812,32 @@ Denies the viewport_orbit command without any pre-configured scope.
 <tr>
 <td>
 
+`cadhy-bridge:allow-viewport-orbit-native`
+
+</td>
+<td>
+
+Enables the viewport_orbit_native command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:deny-viewport-orbit-native`
+
+</td>
+<td>
+
+Denies the viewport_orbit_native command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `cadhy-bridge:allow-viewport-pan`
 
 </td>
@@ -669,6 +864,32 @@ Denies the viewport_pan command without any pre-configured scope.
 <tr>
 <td>
 
+`cadhy-bridge:allow-viewport-pan-native`
+
+</td>
+<td>
+
+Enables the viewport_pan_native command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:deny-viewport-pan-native`
+
+</td>
+<td>
+
+Denies the viewport_pan_native command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `cadhy-bridge:allow-viewport-render-frame`
 
 </td>
@@ -688,6 +909,32 @@ Enables the viewport_render_frame command without any pre-configured scope.
 <td>
 
 Denies the viewport_render_frame command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:allow-viewport-reset-camera`
+
+</td>
+<td>
+
+Enables the viewport_reset_camera command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:deny-viewport-reset-camera`
+
+</td>
+<td>
+
+Denies the viewport_reset_camera command without any pre-configured scope.
 
 </td>
 </tr>
@@ -747,6 +994,84 @@ Denies the viewport_set_camera command without any pre-configured scope.
 <tr>
 <td>
 
+`cadhy-bridge:allow-viewport-set-settings`
+
+</td>
+<td>
+
+Enables the viewport_set_settings command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:deny-viewport-set-settings`
+
+</td>
+<td>
+
+Denies the viewport_set_settings command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:allow-viewport-set-view-mode`
+
+</td>
+<td>
+
+Enables the viewport_set_view_mode command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:deny-viewport-set-view-mode`
+
+</td>
+<td>
+
+Denies the viewport_set_view_mode command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:allow-viewport-update-bounds`
+
+</td>
+<td>
+
+Enables the viewport_update_bounds command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:deny-viewport-update-bounds`
+
+</td>
+<td>
+
+Denies the viewport_update_bounds command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `cadhy-bridge:allow-viewport-zoom`
 
 </td>
@@ -766,6 +1091,32 @@ Enables the viewport_zoom command without any pre-configured scope.
 <td>
 
 Denies the viewport_zoom command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:allow-viewport-zoom-native`
+
+</td>
+<td>
+
+Enables the viewport_zoom_native command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:deny-viewport-zoom-native`
+
+</td>
+<td>
+
+Denies the viewport_zoom_native command without any pre-configured scope.
 
 </td>
 </tr>

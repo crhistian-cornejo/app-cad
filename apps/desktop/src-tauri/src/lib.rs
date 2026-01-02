@@ -1,7 +1,19 @@
+//! CADHY Desktop - Tauri application with wgpu rendering
+//!
+//! Uses cadhy-bridge for rendering while we figure out native layer integration.
+
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Initialize tracing for logging
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info,wgpu=warn")),
+        )
+        .init();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
@@ -13,12 +25,12 @@ pub fn run() {
         .setup(|app| {
             println!("[CADHY] Application started");
 
-            // Get main window and configure for macOS
-            #[cfg(target_os = "macos")]
-            if let Some(window) = app.get_webview_window("main") {
-                use tauri::TitleBarStyle;
-                let _ = window.set_title_bar_style(TitleBarStyle::Overlay);
-            }
+            // Get main window - titlebar configuration is in tauri.conf.json
+            let _window = app
+                .get_webview_window("main")
+                .expect("Main window not found");
+
+            println!("[CADHY] Using cadhy-bridge offscreen renderer");
 
             Ok(())
         })

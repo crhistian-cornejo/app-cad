@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-viewport-is-native"
+description = "Enables the viewport_is_native command without any pre-configured scope."
+commands.allow = ["viewport_is_native"]
+
+[[permission]]
+identifier = "deny-viewport-is-native"
+description = "Denies the viewport_is_native command without any pre-configured scope."
+commands.deny = ["viewport_is_native"]

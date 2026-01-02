@@ -6,6 +6,7 @@
 pub mod camera;
 pub mod error;
 pub mod mesh;
+pub mod native_viewport;
 pub mod offscreen;
 pub mod picking;
 pub mod pipelines;
@@ -16,6 +17,7 @@ pub mod scene;
 pub use camera::{Camera, CameraController, Projection};
 pub use error::{ViewportError, ViewportResult};
 pub use mesh::{GpuMesh, MeshData, Vertex};
+pub use native_viewport::NativeViewport;
 pub use offscreen::OffscreenRenderer;
 pub use picking::{color_to_id, id_to_color, PickingBuffer};
 pub use render_context::{RenderContext, ViewMode};

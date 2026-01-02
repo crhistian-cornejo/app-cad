@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-viewport-update-bounds"
+description = "Enables the viewport_update_bounds command without any pre-configured scope."
+commands.allow = ["viewport_update_bounds"]
+
+[[permission]]
+identifier = "deny-viewport-update-bounds"
+description = "Denies the viewport_update_bounds command without any pre-configured scope."
+commands.deny = ["viewport_update_bounds"]

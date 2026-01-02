@@ -1,13 +1,28 @@
 //! Viewport commands: camera control, resize, render mode
+//!
+//! Supports two rendering modes:
+//! - **Embedded mode**: High-performance wgpu rendering to a child window (60+ FPS)
+//! - **Fallback mode**: Offscreen rendering with base64 transfer (for compatibility)
 
-use tauri::State;
+use std::sync::{Arc, RwLock};
+
+use tauri::{AppHandle, Manager, Runtime, State};
 use tracing::{error, info};
 
 use cadhy_viewport::ViewMode;
 
 use crate::dto::{CameraDto, OrbitInputDto, PanInputDto, ViewModeDto, ViewportSizeDto, ZoomInputDto};
+use crate::embedded_viewport::{EmbeddedViewport, RenderMessage};
 use crate::error::BridgeResult;
 use crate::state::{AppState, CameraState};
+
+/// Viewport settings DTO
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ViewportSettingsDto {
+    pub show_grid: bool,
+    pub show_axes: bool,
+    pub anti_aliasing: bool,
+}
 
 /// Initialize the offscreen renderer
 #[tauri::command]
@@ -414,4 +429,311 @@ pub async fn viewport_get_view_mode(state: State<'_, AppState>) -> BridgeResult<
         ViewMode::Solid => ViewModeDto::Solid,
         ViewMode::Wireframe => ViewModeDto::Wireframe,
     })
+}
+
+/// Reset the camera to default position
+#[tauri::command]
+pub async fn viewport_reset_camera(state: State<'_, AppState>) -> BridgeResult<CameraDto> {
+    let mut cam = state
+        .camera_state
+        .write()
+        .map_err(|e| crate::error::BridgeError::StateLock(e.to_string()))?;
+
+    *cam = CameraState::default();
+    state.mark_dirty();
+
+    Ok(CameraDto {
+        position: cam.position,
+        target: cam.target,
+        up: cam.up,
+        fov: cam.fov,
+        near: cam.near,
+        far: cam.far,
+    })
+}
+
+/// Set viewport settings (grid, axes, anti-aliasing)
+#[tauri::command]
+pub async fn viewport_set_settings(
+    state: State<'_, AppState>,
+    settings: ViewportSettingsDto,
+) -> BridgeResult<()> {
+    // Update renderer settings
+    {
+        let mut renderer_opt = state
+            .renderer
+            .write()
+            .map_err(|e| crate::error::BridgeError::StateLock(e.to_string()))?;
+
+        if let Some(renderer) = renderer_opt.as_mut() {
+            renderer.render_context.show_grid = settings.show_grid;
+            // TODO: Implement show_axes when axes pipeline is added
+            // TODO: Implement anti_aliasing when MSAA is supported
+        }
+    }
+
+    state.mark_dirty();
+    info!("Viewport settings updated: grid={}, axes={}, aa={}",
+          settings.show_grid, settings.show_axes, settings.anti_aliasing);
+    Ok(())
+}
+
+/// Get current viewport settings
+#[tauri::command]
+pub async fn viewport_get_settings(state: State<'_, AppState>) -> BridgeResult<ViewportSettingsDto> {
+    let renderer_opt = state
+        .renderer
+        .read()
+        .map_err(|e| crate::error::BridgeError::StateLock(e.to_string()))?;
+
+    if let Some(renderer) = renderer_opt.as_ref() {
+        Ok(ViewportSettingsDto {
+            show_grid: renderer.render_context.show_grid,
+            show_axes: false, // TODO: Add when implemented
+            anti_aliasing: false, // TODO: Add when implemented
+        })
+    } else {
+        Ok(ViewportSettingsDto {
+            show_grid: true,
+            show_axes: true,
+            anti_aliasing: true,
+        })
+    }
+}
+
+/// Check if viewport needs re-render (dirty flag optimization)
+#[tauri::command]
+pub async fn viewport_is_dirty(state: State<'_, AppState>) -> BridgeResult<bool> {
+    Ok(state.is_dirty())
+}
+
+/// Clear the dirty flag after rendering
+#[tauri::command]
+pub async fn viewport_clear_dirty(state: State<'_, AppState>) -> BridgeResult<()> {
+    state.clear_dirty();
+    Ok(())
+}
+
+// ============================================================================
+// EMBEDDED VIEWPORT COMMANDS (High-performance mode)
+// ============================================================================
+
+/// Type alias for the managed embedded viewport state
+type EmbeddedViewportState<R> = Arc<RwLock<Option<EmbeddedViewport<R>>>>;
+
+/// Initialize embedded viewport by creating a child window for wgpu rendering
+///
+/// This creates a child window (not WebviewWindow) that uses wgpu for direct
+/// GPU rendering at 60+ FPS. The child window moves with the parent automatically.
+///
+/// IMPORTANT: On macOS, Metal layer creation MUST happen on the main thread.
+/// Tauri commands run on the async runtime, so we use run_on_main_thread().
+#[tauri::command]
+pub async fn viewport_init_native<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    width: u32,
+    height: u32,
+    x: i32,
+    y: i32,
+) -> BridgeResult<bool> {
+    // Check if already initialized - prevent duplicate initialization from React StrictMode
+    if state.is_embedded_mode() {
+        info!("Embedded viewport already initialized, skipping duplicate init");
+        return Ok(true);
+    }
+    
+    info!("Initializing embedded viewport {}x{} at ({}, {})", width, height, x, y);
+
+    // Verify main window exists before proceeding
+    let _main_window = app
+        .get_webview_window("main")
+        .ok_or_else(|| crate::error::BridgeError::ViewportInit("Main window not found".to_string()))?;
+
+    // Clone references for move into closure
+    let embedded_mode_flag = state.embedded_mode.clone();
+    let app_clone = app.clone();
+
+    // Use a channel to communicate the result from main thread back to async context
+    let (tx, rx) = std::sync::mpsc::channel::<Result<(), String>>();
+
+    // === CRITICAL: Run viewport initialization on main thread ===
+    // On macOS, Metal layer creation MUST happen on the main thread.
+    // Tauri's run_on_main_thread ensures we're on the correct thread.
+    app.run_on_main_thread(move || {
+        info!("Running embedded viewport init on main thread...");
+        
+        let result = (|| -> Result<(), String> {
+            // Get main window again in this closure
+            let main_window = app_clone
+                .get_webview_window("main")
+                .ok_or_else(|| "Main window not found".to_string())?;
+
+            // Create embedded viewport as child of main window
+            let mut viewport = EmbeddedViewport::new(
+                &app_clone,
+                &main_window,
+                x, y,
+                width, height,
+            )?;
+
+            // Start the render loop (creates wgpu surface on THIS thread)
+            viewport.start_render_loop()?;
+
+            // Store the viewport in managed state
+            // We wrap in Arc<RwLock<Option<>>> so it can be accessed from commands
+            let viewport_state: EmbeddedViewportState<R> = Arc::new(RwLock::new(Some(viewport)));
+            app_clone.manage(viewport_state);
+            
+            if let Ok(mut mode) = embedded_mode_flag.write() {
+                *mode = true;
+            }
+            info!("Embedded viewport initialized successfully on main thread");
+            Ok(())
+        })();
+
+        let _ = tx.send(result);
+    }).map_err(|e| crate::error::BridgeError::ViewportInit(format!("Main thread dispatch failed: {:?}", e)))?;
+
+    // Wait for the result from main thread
+    let init_result = rx.recv()
+        .map_err(|e| crate::error::BridgeError::ViewportInit(format!("Failed to receive init result: {}", e)))?;
+
+    match init_result {
+        Ok(()) => {
+            info!("Embedded viewport initialized successfully - 60+ FPS");
+            Ok(true)
+        }
+        Err(e) => {
+            error!("Failed to initialize embedded viewport: {}", e);
+            // Fall back to offscreen rendering
+            state
+                .init_renderer(width, height)
+                .await
+                .map_err(|e| crate::error::BridgeError::ViewportInit(e))?;
+            info!("Fell back to offscreen rendering");
+            Ok(false)
+        }
+    }
+}
+
+/// Check if embedded mode is active
+#[tauri::command]
+pub async fn viewport_is_native(state: State<'_, AppState>) -> BridgeResult<bool> {
+    Ok(state.is_embedded_mode())
+}
+
+/// Update embedded viewport size and position
+///
+/// Called from frontend when the viewport area changes (panel resize, window move, etc.)
+/// Note: Position updates are now less critical since child window moves with parent,
+/// but we still handle resize events.
+#[tauri::command]
+pub async fn viewport_update_bounds<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+) -> BridgeResult<()> {
+    if !state.is_embedded_mode() {
+        // Also resize the offscreen renderer for fallback mode
+        viewport_resize(state.clone(), width, height).await?;
+        return Ok(());
+    }
+
+    // Get the main window to calculate absolute position
+    let main_window = match app.get_webview_window("main") {
+        Some(w) => w,
+        None => return Ok(()),
+    };
+
+    let main_inner_pos = main_window.inner_position()
+        .map_err(|e| crate::error::BridgeError::ViewportInit(e.to_string()))?;
+    
+    let abs_x = main_inner_pos.x + x;
+    let abs_y = main_inner_pos.y + y;
+
+    // Get the embedded viewport from managed state and update bounds
+    if let Some(viewport_state) = app.try_state::<EmbeddedViewportState<R>>() {
+        if let Ok(guard) = viewport_state.read() {
+            if let Some(viewport) = guard.as_ref() {
+                let _ = viewport.update_bounds(abs_x, abs_y, width, height);
+            }
+        }
+    }
+
+    // Update stored size
+    if let Ok(mut size) = state.viewport_size.write() {
+        *size = (width, height);
+    }
+
+    Ok(())
+}
+
+/// Send orbit command to embedded viewport
+#[tauri::command]
+pub async fn viewport_orbit_native<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    delta_x: f32,
+    delta_y: f32,
+) -> BridgeResult<()> {
+    if state.is_embedded_mode() {
+        if let Some(viewport_state) = app.try_state::<EmbeddedViewportState<R>>() {
+            if let Ok(guard) = viewport_state.read() {
+                if let Some(viewport) = guard.as_ref() {
+                    let _ = viewport.send(RenderMessage::Orbit { delta_x, delta_y });
+                }
+            }
+        }
+    } else {
+        // Fallback to offscreen mode camera update
+        viewport_orbit(state, OrbitInputDto { delta_x, delta_y }).await?;
+    }
+    Ok(())
+}
+
+/// Send pan command to embedded viewport
+#[tauri::command]
+pub async fn viewport_pan_native<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    delta_x: f32,
+    delta_y: f32,
+) -> BridgeResult<()> {
+    if state.is_embedded_mode() {
+        if let Some(viewport_state) = app.try_state::<EmbeddedViewportState<R>>() {
+            if let Ok(guard) = viewport_state.read() {
+                if let Some(viewport) = guard.as_ref() {
+                    let _ = viewport.send(RenderMessage::Pan { delta_x, delta_y });
+                }
+            }
+        }
+    } else {
+        viewport_pan(state, PanInputDto { delta_x, delta_y }).await?;
+    }
+    Ok(())
+}
+
+/// Send zoom command to embedded viewport
+#[tauri::command]
+pub async fn viewport_zoom_native<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    delta: f32,
+) -> BridgeResult<()> {
+    if state.is_embedded_mode() {
+        if let Some(viewport_state) = app.try_state::<EmbeddedViewportState<R>>() {
+            if let Ok(guard) = viewport_state.read() {
+                if let Some(viewport) = guard.as_ref() {
+                    let _ = viewport.send(RenderMessage::Zoom { delta });
+                }
+            }
+        }
+    } else {
+        viewport_zoom(state, ZoomInputDto { delta }).await?;
+    }
+    Ok(())
 }

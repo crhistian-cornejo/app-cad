@@ -1,41 +1,93 @@
 import {
   Button,
   cn,
+  CollapsiblePanelLayout,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
   Toaster,
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
+  type PanelTab,
 } from "@cadhy/ui"
+import logoUrl from "@/assets/logo.png"
 import {
   Add01Icon,
+  ArrowDown01Icon,
+  ArrowTurnBackwardIcon,
+  ArrowTurnForwardIcon,
   FolderOpenIcon,
-  Home01Icon,
   Moon02Icon,
   Settings01Icon,
-  SidebarLeft01Icon,
-  SidebarRight01Icon,
   Sun01Icon,
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useLayoutStore } from "@/stores/layout-store"
 import { useViewportStore } from "@/stores/viewport-store"
 import { ViewportPanel } from "../viewport/ViewportPanel"
 import { SettingsDialog } from "../dialogs/SettingsDialog"
+import { projectApi } from "@/lib/tauri"
+import { open as openDialog } from "@tauri-apps/plugin-dialog"
+import { toast } from "sonner"
+import { getCurrentWindow } from "@tauri-apps/api/window"
 
 export function AppLayout() {
-  const { panels, togglePanel, theme, setTheme, borderRadius } = useLayoutStore()
+  const { theme, setTheme, borderRadius } = useLayoutStore()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [isMacOS, setIsMacOS] = useState(false)
+
+  // Panel tab definitions
+  const leftPanelTabs: PanelTab[] = [
+    {
+      id: "scene",
+      label: "Scene",
+      badge: "WIP",
+      content: (
+        <div className="p-3 text-sm text-muted-foreground">
+          <p>No objects in scene</p>
+        </div>
+      ),
+    },
+    {
+      id: "layers",
+      label: "Layers",
+      badge: "WIP",
+      content: (
+        <div className="p-3 text-sm text-muted-foreground">
+          <p>No layers</p>
+        </div>
+      ),
+    },
+  ]
+
+  const rightPanelTabs: PanelTab[] = [
+    {
+      id: "properties",
+      label: "Properties",
+      badge: "WIP",
+      content: (
+        <div className="p-3 text-sm text-muted-foreground">
+          <p>Select an object to view properties</p>
+        </div>
+      ),
+    },
+    {
+      id: "inspector",
+      label: "Inspector",
+      badge: "WIP",
+      content: (
+        <div className="p-3 text-sm text-muted-foreground">
+          <p>Inspector panel</p>
+        </div>
+      ),
+    },
+  ]
 
   // Detect platform
   useEffect(() => {
@@ -58,13 +110,11 @@ export function AppLayout() {
   }, [borderRadius])
 
   return (
-    <TooltipProvider delayDuration={300}>
+    <TooltipProvider delay={300}>
       <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
         {/* Titlebar */}
         <Titlebar
           isMacOS={isMacOS}
-          panels={panels}
-          togglePanel={togglePanel}
           theme={theme}
           setTheme={setTheme}
           onOpenSettings={() => setSettingsOpen(true)}
@@ -72,46 +122,18 @@ export function AppLayout() {
 
         {/* Main content with panels */}
         <div className="flex-1 min-h-0">
-          <ResizablePanelGroup direction="horizontal" className="h-full">
-            {/* Left Panel */}
-            {panels.left && (
-              <>
-                <ResizablePanel
-                  id="left-panel"
-                  order={1}
-                  defaultSize={20}
-                  minSize={15}
-                  maxSize={35}
-                  className="bg-card"
-                >
-                  <LeftPanel />
-                </ResizablePanel>
-                <ResizableHandle withHandle />
-              </>
-            )}
-
-            {/* Center - Viewport */}
-            <ResizablePanel id="viewport" order={2} defaultSize={60} minSize={40}>
-              <ViewportPanel />
-            </ResizablePanel>
-
-            {/* Right Panel */}
-            {panels.right && (
-              <>
-                <ResizableHandle withHandle />
-                <ResizablePanel
-                  id="right-panel"
-                  order={3}
-                  defaultSize={20}
-                  minSize={15}
-                  maxSize={35}
-                  className="bg-card"
-                >
-                  <RightPanel />
-                </ResizablePanel>
-              </>
-            )}
-          </ResizablePanelGroup>
+          <CollapsiblePanelLayout
+            leftPanel={{
+              tabs: leftPanelTabs,
+              defaultCollapsed: false,
+            }}
+            rightPanel={{
+              tabs: rightPanelTabs,
+              defaultCollapsed: false,
+            }}
+          >
+            <ViewportPanel />
+          </CollapsiblePanelLayout>
         </div>
 
         {/* Status Bar */}
@@ -130,40 +152,23 @@ export function AppLayout() {
 
 interface TitlebarProps {
   isMacOS: boolean
-  panels: { left: boolean; right: boolean }
-  togglePanel: (panel: "left" | "right") => void
   theme: "light" | "dark" | "system"
   setTheme: (theme: "light" | "dark" | "system") => void
   onOpenSettings: () => void
 }
 
-function Titlebar({ isMacOS, panels, togglePanel, theme, setTheme, onOpenSettings }: TitlebarProps) {
+function Titlebar({ isMacOS, theme, setTheme, onOpenSettings }: TitlebarProps) {
   return (
     <header
       data-tauri-drag-region
       className={cn(
-        "relative flex shrink-0 items-center bg-background/80 backdrop-blur-sm border-b border-border/50",
-        isMacOS ? "h-10 pl-[80px] pr-3" : "h-9 pl-3 pr-3"
+        "relative flex shrink-0 items-center bg-background/95 backdrop-blur-md border-b border-border",
+        isMacOS ? "h-10 pl-[60px] pr-3" : "h-9 pl-3 pr-3"
       )}
     >
       {/* Left section */}
       <div className="flex items-center gap-2 z-10" data-tauri-drag-region>
-        <LogoDropdown onOpenSettings={onOpenSettings} />
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={panels.left ? "secondary" : "ghost"}
-              size="icon"
-              className="size-7"
-              onClick={() => togglePanel("left")}
-              data-tauri-drag-region="false"
-            >
-              <HugeiconsIcon icon={SidebarLeft01Icon} size={16} />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Toggle Left Panel</TooltipContent>
-        </Tooltip>
+        <LogoDropdown onOpenSettings={onOpenSettings} isMacOS={isMacOS} />
       </div>
 
       {/* Center - App name */}
@@ -194,21 +199,6 @@ function Titlebar({ isMacOS, panels, togglePanel, theme, setTheme, onOpenSetting
           </TooltipTrigger>
           <TooltipContent>Toggle Theme</TooltipContent>
         </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={panels.right ? "secondary" : "ghost"}
-              size="icon"
-              className="size-7"
-              onClick={() => togglePanel("right")}
-              data-tauri-drag-region="false"
-            >
-              <HugeiconsIcon icon={SidebarRight01Icon} size={16} />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Toggle Right Panel</TooltipContent>
-        </Tooltip>
       </div>
     </header>
   )
@@ -218,67 +208,101 @@ function Titlebar({ isMacOS, panels, togglePanel, theme, setTheme, onOpenSetting
 // LOGO DROPDOWN
 // ============================================================================
 
-function LogoDropdown({ onOpenSettings }: { onOpenSettings: () => void }) {
+interface LogoDropdownProps {
+  onOpenSettings: () => void
+  isMacOS: boolean
+}
+
+function LogoDropdown({ onOpenSettings, isMacOS }: LogoDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const handleNewProject = useCallback(async () => {
+    try {
+      await projectApi.newProject()
+      toast.success("Created a new empty project")
+    } catch (e) {
+      console.error("Failed to create new project:", e)
+      toast.error("Failed to create new project")
+    }
+  }, [])
+
+  const handleOpenProject = useCallback(async () => {
+    try {
+      const selected = await openDialog({
+        multiple: false,
+        filters: [
+          { name: "CADHY Project", extensions: ["cadhy", "cad"] },
+          { name: "All Files", extensions: ["*"] },
+        ],
+      })
+
+      if (selected) {
+        // TODO: Implement project loading
+        toast.info(`Selected: ${selected}`)
+      }
+    } catch (e) {
+      console.error("Failed to open project:", e)
+    }
+  }, [])
+
+  const handleUndo = useCallback(async () => {
+    try {
+      await projectApi.undo()
+    } catch (e) {
+      console.error("Failed to undo:", e)
+    }
+  }, [])
+
+  const handleRedo = useCallback(async () => {
+    try {
+      await projectApi.redo()
+    } catch (e) {
+      console.error("Failed to redo:", e)
+    }
+  }, [])
+
+  const cmdKey = isMacOS ? "⌘" : "Ctrl+"
+
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 gap-2 px-2" data-tauri-drag-region="false">
-          <div className="size-5 rounded bg-primary flex items-center justify-center">
-            <span className="text-[10px] font-bold text-primary-foreground">C</span>
+        <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-1.5 pr-2 rounded-lg" data-tauri-drag-region="false">
+          <img src={logoUrl} alt="CADHY" className="size-5 rounded shadow-sm" />
+          <span className="text-xs font-semibold tracking-tight text-foreground/90">CADHY</span>
+          <div className={cn("transition-transform duration-200", isOpen ? "rotate-180" : "rotate-0")}>
+            <HugeiconsIcon icon={ArrowDown01Icon} size={10} className="text-muted-foreground/50 ml-0.5" />
           </div>
-          <span className="text-xs font-medium">CADHY</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-48">
-        <DropdownMenuItem>
+      <DropdownMenuContent align="start" className="w-52">
+        <DropdownMenuItem onClick={handleNewProject}>
           <HugeiconsIcon icon={Add01Icon} size={16} className="mr-2" />
           New Project
+          <DropdownMenuShortcut>{cmdKey}N</DropdownMenuShortcut>
         </DropdownMenuItem>
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={handleOpenProject}>
           <HugeiconsIcon icon={FolderOpenIcon} size={16} className="mr-2" />
           Open Project
+          <DropdownMenuShortcut>{cmdKey}O</DropdownMenuShortcut>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
-          <HugeiconsIcon icon={Home01Icon} size={16} className="mr-2" />
-          Home
+        <DropdownMenuItem onClick={handleUndo}>
+          <HugeiconsIcon icon={ArrowTurnBackwardIcon} size={16} className="mr-2" />
+          Undo
+          <DropdownMenuShortcut>{cmdKey}Z</DropdownMenuShortcut>
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onOpenSettings}>
+        <DropdownMenuItem onClick={handleRedo}>
+          <HugeiconsIcon icon={ArrowTurnForwardIcon} size={16} className="mr-2" />
+          Redo
+          <DropdownMenuShortcut>{cmdKey}{isMacOS ? "⇧Z" : "Y"}</DropdownMenuShortcut>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={onOpenSettings}>
           <HugeiconsIcon icon={Settings01Icon} size={16} className="mr-2" />
           Settings
+          <DropdownMenuShortcut>{cmdKey},</DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
-}
-
-// ============================================================================
-// PANELS
-// ============================================================================
-
-function LeftPanel() {
-  return (
-    <div className="flex flex-col h-full">
-      <div className="panel-header">
-        <span className="panel-title">SCENE</span>
-      </div>
-      <div className="flex-1 p-3 text-sm text-muted-foreground">
-        <p>No objects in scene</p>
-      </div>
-    </div>
-  )
-}
-
-function RightPanel() {
-  return (
-    <div className="flex flex-col h-full">
-      <div className="panel-header">
-        <span className="panel-title">PROPERTIES</span>
-      </div>
-      <div className="flex-1 p-3 text-sm text-muted-foreground">
-        <p>Select an object to view properties</p>
-      </div>
-    </div>
   )
 }
 

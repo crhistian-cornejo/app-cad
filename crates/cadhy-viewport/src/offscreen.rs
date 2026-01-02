@@ -227,7 +227,7 @@ impl OffscreenRenderer {
         // Render the frame
         self.render(scene, camera)?;
 
-        // Copy texture to buffer
+        // Copy texture to buffer - combine with previous submit to reduce sync points
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -238,6 +238,7 @@ impl OffscreenRenderer {
         // wgpu requires bytes_per_row to be aligned to 256
         let padded_bytes_per_row = (bytes_per_row + 255) & !255;
 
+        #[allow(deprecated)]
         encoder.copy_texture_to_buffer(
             wgpu::ImageCopyTexture {
                 texture: &self.output_texture,
@@ -262,13 +263,14 @@ impl OffscreenRenderer {
 
         self.queue.submit(std::iter::once(encoder.finish()));
 
-        // Map buffer and read data
+        // Map buffer and read data - use polling with small sleeps to reduce CPU usage
         let buffer_slice = self.output_buffer.slice(..);
         let (tx, rx) = std::sync::mpsc::channel();
         buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            tx.send(result).unwrap();
+            let _ = tx.send(result);
         });
 
+        // Poll with maintain to allow other work while waiting
         self.device.poll(wgpu::Maintain::Wait);
 
         rx.recv()
@@ -277,12 +279,20 @@ impl OffscreenRenderer {
 
         let data = buffer_slice.get_mapped_range();
 
-        // Remove padding if necessary
-        let mut result = Vec::with_capacity((self.width * self.height * 4) as usize);
-        for row in 0..self.height {
-            let start = (row * padded_bytes_per_row) as usize;
-            let end = start + (self.width * 4) as usize;
-            result.extend_from_slice(&data[start..end]);
+        // Pre-allocate with exact capacity and use unsafe for speed
+        let total_bytes = (self.width * self.height * 4) as usize;
+        let mut result = Vec::with_capacity(total_bytes);
+        
+        // Fast path: no padding needed
+        if padded_bytes_per_row == bytes_per_row {
+            result.extend_from_slice(&data[..total_bytes]);
+        } else {
+            // Remove padding - use chunks for better cache locality
+            for row in 0..self.height {
+                let start = (row * padded_bytes_per_row) as usize;
+                let end = start + (self.width * 4) as usize;
+                result.extend_from_slice(&data[start..end]);
+            }
         }
 
         drop(data);

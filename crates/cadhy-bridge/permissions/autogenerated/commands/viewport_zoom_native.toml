@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-viewport-zoom-native"
+description = "Enables the viewport_zoom_native command without any pre-configured scope."
+commands.allow = ["viewport_zoom_native"]
+
+[[permission]]
+identifier = "deny-viewport-zoom-native"
+description = "Denies the viewport_zoom_native command without any pre-configured scope."
+commands.deny = ["viewport_zoom_native"]

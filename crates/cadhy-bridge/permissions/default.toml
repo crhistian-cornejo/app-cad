@@ -6,12 +6,14 @@
 [default]
 description = "Default permissions for CADHY 3D plugin - grants access to all commands"
 permissions = [
+    # Project commands
     "allow-project-ping",
     "allow-project-new",
     "allow-project-undo",
     "allow-project-redo",
     "allow-project-can-undo",
     "allow-project-can-redo",
+    # Viewport commands (fallback mode)
     "allow-viewport-init",
     "allow-viewport-is-initialized",
     "allow-viewport-render-frame",
@@ -24,6 +26,21 @@ permissions = [
     "allow-viewport-zoom",
     "allow-viewport-frame-selection",
     "allow-viewport-frame-all",
+    "allow-viewport-set-view-mode",
+    "allow-viewport-get-view-mode",
+    "allow-viewport-reset-camera",
+    "allow-viewport-set-settings",
+    "allow-viewport-get-settings",
+    "allow-viewport-is-dirty",
+    "allow-viewport-clear-dirty",
+    # Native viewport commands (high-performance mode)
+    "allow-viewport-init-native",
+    "allow-viewport-is-native",
+    "allow-viewport-update-bounds",
+    "allow-viewport-orbit-native",
+    "allow-viewport-pan-native",
+    "allow-viewport-zoom-native",
+    # Scene commands
     "allow-scene-get-objects",
     "allow-scene-add-object",
     "allow-scene-add-primitive",

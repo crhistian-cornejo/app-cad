@@ -28,8 +28,14 @@ uuid.workspace = true
 tokio.workspace = true
 pollster = "0.4"
 
-# Base64 for frame encoding
+# Base64 for frame encoding (fallback mode)
 base64 = "0.22"
+
+# Channel for render thread communication
+crossbeam-channel = "0.5"
+
+# Window handles for wgpu integration
+raw-window-handle.workspace = true
 
 # Logging
 tracing.workspace = true

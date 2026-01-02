@@ -2,8 +2,18 @@
 //!
 //! Central state container that holds all application data.
 //! Uses RwLock for thread-safe access from Tauri commands.
+//!
+//! # Rendering Modes
+//!
+//! The application supports two rendering modes:
+//!
+//! 1. **Embedded Mode** (preferred): Uses an embedded child window with wgpu 
+//!    direct rendering for 60+ FPS. The child window moves with the parent.
+//!
+//! 2. **Fallback Mode**: Uses OffscreenRenderer with base64 frame transfer.
+//!    Slower but works when native mode isn't available.
 
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 use cadhy_commands::CommandStack;
 use cadhy_viewport::{Camera, OffscreenRenderer, Scene, ViewMode};
@@ -12,9 +22,12 @@ use cadhy_viewport::{Camera, OffscreenRenderer, Scene, ViewMode};
 ///
 /// This is managed by Tauri and accessed via `State<AppState>` in commands.
 /// All fields use RwLock for safe concurrent access.
+/// 
+/// Note: EmbeddedViewport is stored separately in the app via manage()
+/// because it needs the Runtime type parameter.
 pub struct AppState {
     /// The 3D scene graph
-    pub scene: RwLock<Scene>,
+    pub scene: Arc<RwLock<Scene>>,
 
     /// Command history for undo/redo
     pub commands: RwLock<CommandStack>,
@@ -28,11 +41,14 @@ pub struct AppState {
     /// Current camera state (serializable for IPC)
     pub camera_state: RwLock<CameraState>,
 
-    /// Offscreen renderer (initialized lazily)
+    /// Offscreen renderer (fallback mode)
     pub renderer: RwLock<Option<OffscreenRenderer>>,
 
     /// Current view mode (solid/wireframe)
     pub view_mode: RwLock<ViewMode>,
+
+    /// Whether embedded viewport rendering is active
+    pub embedded_mode: Arc<RwLock<bool>>,
 }
 
 /// Serializable camera state for IPC
@@ -82,13 +98,14 @@ impl CameraState {
 impl AppState {
     pub fn new() -> Self {
         Self {
-            scene: RwLock::new(Scene::new()),
+            scene: Arc::new(RwLock::new(Scene::new())),
             commands: RwLock::new(CommandStack::new()),
             dirty: RwLock::new(false),
             viewport_size: RwLock::new((1280, 720)),
             camera_state: RwLock::new(CameraState::default()),
             renderer: RwLock::new(None),
             view_mode: RwLock::new(ViewMode::Solid),
+            embedded_mode: Arc::new(RwLock::new(false)),
         }
     }
 
@@ -110,7 +127,31 @@ impl AppState {
         }
     }
 
-    /// Initialize the offscreen renderer
+    /// Check if scene needs re-render (without clearing)
+    pub fn is_dirty(&self) -> bool {
+        self.dirty.read().map(|d| *d).unwrap_or(false)
+    }
+
+    /// Clear the dirty flag
+    pub fn clear_dirty(&self) {
+        if let Ok(mut dirty) = self.dirty.write() {
+            *dirty = false;
+        }
+    }
+
+    /// Check if embedded mode is active
+    pub fn is_embedded_mode(&self) -> bool {
+        self.embedded_mode.read().map(|n| *n).unwrap_or(false)
+    }
+
+    /// Set embedded mode active
+    pub fn set_embedded_mode(&self, active: bool) {
+        if let Ok(mut mode) = self.embedded_mode.write() {
+            *mode = active;
+        }
+    }
+
+    /// Initialize the offscreen renderer (fallback mode)
     pub async fn init_renderer(&self, width: u32, height: u32) -> Result<(), String> {
         let renderer = OffscreenRenderer::new(width, height)
             .await
@@ -125,12 +166,22 @@ impl AppState {
         Ok(())
     }
 
-    /// Check if renderer is initialized
+    /// Check if any renderer is initialized
     pub fn has_renderer(&self) -> bool {
+        // Check embedded mode first
+        if self.is_embedded_mode() {
+            return true;
+        }
+        // Fallback to offscreen
         self.renderer
             .read()
             .map(|r| r.is_some())
             .unwrap_or(false)
+    }
+
+    /// Get the shared scene
+    pub fn shared_scene(&self) -> Arc<RwLock<Scene>> {
+        self.scene.clone()
     }
 }
 

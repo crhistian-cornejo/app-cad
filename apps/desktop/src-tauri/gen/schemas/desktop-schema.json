@@ -2187,10 +2187,10 @@
       "description": "Permission identifier",
       "oneOf": [
         {
-          "description": "Default permissions for CADHY 3D plugin - grants access to all commands\n#### This default permission set includes:\n\n- `allow-project-ping`\n- `allow-project-new`\n- `allow-project-undo`\n- `allow-project-redo`\n- `allow-project-can-undo`\n- `allow-project-can-redo`\n- `allow-viewport-init`\n- `allow-viewport-is-initialized`\n- `allow-viewport-render-frame`\n- `allow-viewport-resize`\n- `allow-viewport-get-size`\n- `allow-viewport-set-camera`\n- `allow-viewport-get-camera`\n- `allow-viewport-orbit`\n- `allow-viewport-pan`\n- `allow-viewport-zoom`\n- `allow-viewport-frame-selection`\n- `allow-viewport-frame-all`\n- `allow-scene-get-objects`\n- `allow-scene-add-object`\n- `allow-scene-add-primitive`\n- `allow-scene-add-cube`\n- `allow-scene-remove-object`\n- `allow-scene-select`\n- `allow-scene-deselect-all`\n- `allow-scene-get-selection`\n- `allow-scene-set-transform`\n- `allow-scene-get-transform`",
+          "description": "Default permissions for CADHY 3D plugin - grants access to all commands\n#### This default permission set includes:\n\n- `allow-project-ping`\n- `allow-project-new`\n- `allow-project-undo`\n- `allow-project-redo`\n- `allow-project-can-undo`\n- `allow-project-can-redo`\n- `allow-viewport-init`\n- `allow-viewport-is-initialized`\n- `allow-viewport-render-frame`\n- `allow-viewport-resize`\n- `allow-viewport-get-size`\n- `allow-viewport-set-camera`\n- `allow-viewport-get-camera`\n- `allow-viewport-orbit`\n- `allow-viewport-pan`\n- `allow-viewport-zoom`\n- `allow-viewport-frame-selection`\n- `allow-viewport-frame-all`\n- `allow-viewport-set-view-mode`\n- `allow-viewport-get-view-mode`\n- `allow-viewport-reset-camera`\n- `allow-viewport-set-settings`\n- `allow-viewport-get-settings`\n- `allow-viewport-is-dirty`\n- `allow-viewport-clear-dirty`\n- `allow-viewport-init-native`\n- `allow-viewport-is-native`\n- `allow-viewport-update-bounds`\n- `allow-viewport-orbit-native`\n- `allow-viewport-pan-native`\n- `allow-viewport-zoom-native`\n- `allow-scene-get-objects`\n- `allow-scene-add-object`\n- `allow-scene-add-primitive`\n- `allow-scene-add-cube`\n- `allow-scene-remove-object`\n- `allow-scene-select`\n- `allow-scene-deselect-all`\n- `allow-scene-get-selection`\n- `allow-scene-set-transform`\n- `allow-scene-get-transform`",
           "type": "string",
           "const": "cadhy-bridge:default",
-          "markdownDescription": "Default permissions for CADHY 3D plugin - grants access to all commands\n#### This default permission set includes:\n\n- `allow-project-ping`\n- `allow-project-new`\n- `allow-project-undo`\n- `allow-project-redo`\n- `allow-project-can-undo`\n- `allow-project-can-redo`\n- `allow-viewport-init`\n- `allow-viewport-is-initialized`\n- `allow-viewport-render-frame`\n- `allow-viewport-resize`\n- `allow-viewport-get-size`\n- `allow-viewport-set-camera`\n- `allow-viewport-get-camera`\n- `allow-viewport-orbit`\n- `allow-viewport-pan`\n- `allow-viewport-zoom`\n- `allow-viewport-frame-selection`\n- `allow-viewport-frame-all`\n- `allow-scene-get-objects`\n- `allow-scene-add-object`\n- `allow-scene-add-primitive`\n- `allow-scene-add-cube`\n- `allow-scene-remove-object`\n- `allow-scene-select`\n- `allow-scene-deselect-all`\n- `allow-scene-get-selection`\n- `allow-scene-set-transform`\n- `allow-scene-get-transform`"
+          "markdownDescription": "Default permissions for CADHY 3D plugin - grants access to all commands\n#### This default permission set includes:\n\n- `allow-project-ping`\n- `allow-project-new`\n- `allow-project-undo`\n- `allow-project-redo`\n- `allow-project-can-undo`\n- `allow-project-can-redo`\n- `allow-viewport-init`\n- `allow-viewport-is-initialized`\n- `allow-viewport-render-frame`\n- `allow-viewport-resize`\n- `allow-viewport-get-size`\n- `allow-viewport-set-camera`\n- `allow-viewport-get-camera`\n- `allow-viewport-orbit`\n- `allow-viewport-pan`\n- `allow-viewport-zoom`\n- `allow-viewport-frame-selection`\n- `allow-viewport-frame-all`\n- `allow-viewport-set-view-mode`\n- `allow-viewport-get-view-mode`\n- `allow-viewport-reset-camera`\n- `allow-viewport-set-settings`\n- `allow-viewport-get-settings`\n- `allow-viewport-is-dirty`\n- `allow-viewport-clear-dirty`\n- `allow-viewport-init-native`\n- `allow-viewport-is-native`\n- `allow-viewport-update-bounds`\n- `allow-viewport-orbit-native`\n- `allow-viewport-pan-native`\n- `allow-viewport-zoom-native`\n- `allow-scene-get-objects`\n- `allow-scene-add-object`\n- `allow-scene-add-primitive`\n- `allow-scene-add-cube`\n- `allow-scene-remove-object`\n- `allow-scene-select`\n- `allow-scene-deselect-all`\n- `allow-scene-get-selection`\n- `allow-scene-set-transform`\n- `allow-scene-get-transform`"
         },
         {
           "description": "Enables the project_can_redo command without any pre-configured scope.",
@@ -2289,6 +2289,12 @@
           "markdownDescription": "Enables the scene_set_transform command without any pre-configured scope."
         },
         {
+          "description": "Enables the viewport_clear_dirty command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:allow-viewport-clear-dirty",
+          "markdownDescription": "Enables the viewport_clear_dirty command without any pre-configured scope."
+        },
+        {
           "description": "Enables the viewport_frame_all command without any pre-configured scope.",
           "type": "string",
           "const": "cadhy-bridge:allow-viewport-frame-all",
@@ -2307,10 +2313,22 @@
           "markdownDescription": "Enables the viewport_get_camera command without any pre-configured scope."
         },
         {
+          "description": "Enables the viewport_get_settings command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:allow-viewport-get-settings",
+          "markdownDescription": "Enables the viewport_get_settings command without any pre-configured scope."
+        },
+        {
           "description": "Enables the viewport_get_size command without any pre-configured scope.",
           "type": "string",
           "const": "cadhy-bridge:allow-viewport-get-size",
           "markdownDescription": "Enables the viewport_get_size command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the viewport_get_view_mode command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:allow-viewport-get-view-mode",
+          "markdownDescription": "Enables the viewport_get_view_mode command without any pre-configured scope."
         },
         {
           "description": "Enables the viewport_init command without any pre-configured scope.",
@@ -2319,10 +2337,28 @@
           "markdownDescription": "Enables the viewport_init command without any pre-configured scope."
         },
         {
+          "description": "Enables the viewport_init_native command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:allow-viewport-init-native",
+          "markdownDescription": "Enables the viewport_init_native command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the viewport_is_dirty command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:allow-viewport-is-dirty",
+          "markdownDescription": "Enables the viewport_is_dirty command without any pre-configured scope."
+        },
+        {
           "description": "Enables the viewport_is_initialized command without any pre-configured scope.",
           "type": "string",
           "const": "cadhy-bridge:allow-viewport-is-initialized",
           "markdownDescription": "Enables the viewport_is_initialized command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the viewport_is_native command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:allow-viewport-is-native",
+          "markdownDescription": "Enables the viewport_is_native command without any pre-configured scope."
         },
         {
           "description": "Enables the viewport_orbit command without any pre-configured scope.",
@@ -2331,16 +2367,34 @@
           "markdownDescription": "Enables the viewport_orbit command without any pre-configured scope."
         },
         {
+          "description": "Enables the viewport_orbit_native command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:allow-viewport-orbit-native",
+          "markdownDescription": "Enables the viewport_orbit_native command without any pre-configured scope."
+        },
+        {
           "description": "Enables the viewport_pan command without any pre-configured scope.",
           "type": "string",
           "const": "cadhy-bridge:allow-viewport-pan",
           "markdownDescription": "Enables the viewport_pan command without any pre-configured scope."
         },
         {
+          "description": "Enables the viewport_pan_native command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:allow-viewport-pan-native",
+          "markdownDescription": "Enables the viewport_pan_native command without any pre-configured scope."
+        },
+        {
           "description": "Enables the viewport_render_frame command without any pre-configured scope.",
           "type": "string",
           "const": "cadhy-bridge:allow-viewport-render-frame",
           "markdownDescription": "Enables the viewport_render_frame command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the viewport_reset_camera command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:allow-viewport-reset-camera",
+          "markdownDescription": "Enables the viewport_reset_camera command without any pre-configured scope."
         },
         {
           "description": "Enables the viewport_resize command without any pre-configured scope.",
@@ -2355,10 +2409,34 @@
           "markdownDescription": "Enables the viewport_set_camera command without any pre-configured scope."
         },
         {
+          "description": "Enables the viewport_set_settings command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:allow-viewport-set-settings",
+          "markdownDescription": "Enables the viewport_set_settings command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the viewport_set_view_mode command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:allow-viewport-set-view-mode",
+          "markdownDescription": "Enables the viewport_set_view_mode command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the viewport_update_bounds command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:allow-viewport-update-bounds",
+          "markdownDescription": "Enables the viewport_update_bounds command without any pre-configured scope."
+        },
+        {
           "description": "Enables the viewport_zoom command without any pre-configured scope.",
           "type": "string",
           "const": "cadhy-bridge:allow-viewport-zoom",
           "markdownDescription": "Enables the viewport_zoom command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the viewport_zoom_native command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:allow-viewport-zoom-native",
+          "markdownDescription": "Enables the viewport_zoom_native command without any pre-configured scope."
         },
         {
           "description": "Denies the project_can_redo command without any pre-configured scope.",
@@ -2457,6 +2535,12 @@
           "markdownDescription": "Denies the scene_set_transform command without any pre-configured scope."
         },
         {
+          "description": "Denies the viewport_clear_dirty command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:deny-viewport-clear-dirty",
+          "markdownDescription": "Denies the viewport_clear_dirty command without any pre-configured scope."
+        },
+        {
           "description": "Denies the viewport_frame_all command without any pre-configured scope.",
           "type": "string",
           "const": "cadhy-bridge:deny-viewport-frame-all",
@@ -2475,10 +2559,22 @@
           "markdownDescription": "Denies the viewport_get_camera command without any pre-configured scope."
         },
         {
+          "description": "Denies the viewport_get_settings command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:deny-viewport-get-settings",
+          "markdownDescription": "Denies the viewport_get_settings command without any pre-configured scope."
+        },
+        {
           "description": "Denies the viewport_get_size command without any pre-configured scope.",
           "type": "string",
           "const": "cadhy-bridge:deny-viewport-get-size",
           "markdownDescription": "Denies the viewport_get_size command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the viewport_get_view_mode command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:deny-viewport-get-view-mode",
+          "markdownDescription": "Denies the viewport_get_view_mode command without any pre-configured scope."
         },
         {
           "description": "Denies the viewport_init command without any pre-configured scope.",
@@ -2487,10 +2583,28 @@
           "markdownDescription": "Denies the viewport_init command without any pre-configured scope."
         },
         {
+          "description": "Denies the viewport_init_native command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:deny-viewport-init-native",
+          "markdownDescription": "Denies the viewport_init_native command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the viewport_is_dirty command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:deny-viewport-is-dirty",
+          "markdownDescription": "Denies the viewport_is_dirty command without any pre-configured scope."
+        },
+        {
           "description": "Denies the viewport_is_initialized command without any pre-configured scope.",
           "type": "string",
           "const": "cadhy-bridge:deny-viewport-is-initialized",
           "markdownDescription": "Denies the viewport_is_initialized command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the viewport_is_native command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:deny-viewport-is-native",
+          "markdownDescription": "Denies the viewport_is_native command without any pre-configured scope."
         },
         {
           "description": "Denies the viewport_orbit command without any pre-configured scope.",
@@ -2499,16 +2613,34 @@
           "markdownDescription": "Denies the viewport_orbit command without any pre-configured scope."
         },
         {
+          "description": "Denies the viewport_orbit_native command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:deny-viewport-orbit-native",
+          "markdownDescription": "Denies the viewport_orbit_native command without any pre-configured scope."
+        },
+        {
           "description": "Denies the viewport_pan command without any pre-configured scope.",
           "type": "string",
           "const": "cadhy-bridge:deny-viewport-pan",
           "markdownDescription": "Denies the viewport_pan command without any pre-configured scope."
         },
         {
+          "description": "Denies the viewport_pan_native command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:deny-viewport-pan-native",
+          "markdownDescription": "Denies the viewport_pan_native command without any pre-configured scope."
+        },
+        {
           "description": "Denies the viewport_render_frame command without any pre-configured scope.",
           "type": "string",
           "const": "cadhy-bridge:deny-viewport-render-frame",
           "markdownDescription": "Denies the viewport_render_frame command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the viewport_reset_camera command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:deny-viewport-reset-camera",
+          "markdownDescription": "Denies the viewport_reset_camera command without any pre-configured scope."
         },
         {
           "description": "Denies the viewport_resize command without any pre-configured scope.",
@@ -2523,10 +2655,34 @@
           "markdownDescription": "Denies the viewport_set_camera command without any pre-configured scope."
         },
         {
+          "description": "Denies the viewport_set_settings command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:deny-viewport-set-settings",
+          "markdownDescription": "Denies the viewport_set_settings command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the viewport_set_view_mode command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:deny-viewport-set-view-mode",
+          "markdownDescription": "Denies the viewport_set_view_mode command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the viewport_update_bounds command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:deny-viewport-update-bounds",
+          "markdownDescription": "Denies the viewport_update_bounds command without any pre-configured scope."
+        },
+        {
           "description": "Denies the viewport_zoom command without any pre-configured scope.",
           "type": "string",
           "const": "cadhy-bridge:deny-viewport-zoom",
           "markdownDescription": "Denies the viewport_zoom command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the viewport_zoom_native command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:deny-viewport-zoom-native",
+          "markdownDescription": "Denies the viewport_zoom_native command without any pre-configured scope."
         },
         {
           "description": "No features are enabled by default, as we believe\nthe clipboard can be inherently dangerous and it is \napplication specific if read and/or write access is needed.\n\nClipboard interaction needs to be explicitly enabled.\n",

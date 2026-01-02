@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-viewport-reset-camera"
+description = "Enables the viewport_reset_camera command without any pre-configured scope."
+commands.allow = ["viewport_reset_camera"]
+
+[[permission]]
+identifier = "deny-viewport-reset-camera"
+description = "Denies the viewport_reset_camera command without any pre-configured scope."
+commands.deny = ["viewport_reset_camera"]

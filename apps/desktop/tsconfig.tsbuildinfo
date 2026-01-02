@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/components/dialogs/settingsdialog.tsx","./src/components/layout/applayout.tsx","./src/components/viewport/viewportpanel.tsx","./src/lib/tauri.ts","./src/stores/layout-store.ts","./src/stores/viewport-store.ts"],"version":"5.9.3"}

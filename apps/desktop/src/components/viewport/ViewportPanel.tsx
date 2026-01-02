@@ -1,5 +1,7 @@
 /**
- * ViewportPanel - CADHY 3D Viewport with wgpu
+ * ViewportPanel - CADHY 3D Viewport with wgpu Rendering
+ *
+ * Uses cadhy-bridge for wgpu rendering with optimized render loop.
  */
 
 import { useCallback, useEffect, useRef, useState, type PointerEvent, type WheelEvent } from "react"
@@ -9,7 +11,6 @@ import {
   CubeIcon,
   GridIcon,
   MaximizeScreenIcon,
-  Drag01Icon,
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@cadhy/ui"
@@ -38,11 +39,24 @@ function ViewportToolbar() {
 
   const handleSetViewMode = async (mode: "solid" | "wireframe") => {
     setViewMode(mode)
-    // TODO: Call backend to change view mode
+    try {
+      await viewportApi.setViewMode(mode)
+    } catch (e) {
+      console.error("Failed to set view mode:", e)
+    }
+  }
+
+  const handleResetCamera = async () => {
+    try {
+      await viewportApi.resetCamera()
+      resetCamera()
+    } catch (e) {
+      console.error("Failed to reset camera:", e)
+    }
   }
 
   return (
-    <div className="absolute right-2 top-2 flex flex-col gap-1 rounded-lg bg-card/90 p-1.5 backdrop-blur-md border border-border/50 shadow-lg">
+    <div className="absolute right-2 top-2 flex flex-col gap-1 rounded-lg bg-card/90 p-1.5 backdrop-blur-md border border-border/50 shadow-lg z-10">
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -101,7 +115,7 @@ function ViewportToolbar() {
 
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" className="size-8" onClick={resetCamera}>
+          <Button variant="ghost" size="icon" className="size-8" onClick={handleResetCamera}>
             <HugeiconsIcon icon={Camera01Icon} size={18} />
           </Button>
         </TooltipTrigger>
@@ -112,7 +126,7 @@ function ViewportToolbar() {
 }
 
 // ============================================================================
-// VIEWPORT CANVAS
+// VIEWPORT CANVAS with optimized render loop
 // ============================================================================
 
 function ViewportCanvas() {
@@ -124,144 +138,255 @@ function ViewportCanvas() {
   const [isInitialized, setIsInitialized] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Ref to prevent duplicate initialization (React StrictMode calls useEffect twice)
+  const initializingRef = useRef(false)
+
   // Camera control state
   const isDragging = useRef(false)
   const dragMode = useRef<"orbit" | "pan" | null>(null)
   const lastPointer = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
+  const animationFrameRef = useRef<number | null>(null)
 
-  // FPS tracking
-  const frameTimesRef = useRef<number[]>([])
-  const lastFrameTimeRef = useRef(performance.now())
+  // State to track rendering mode
+  const [isNativeMode, setIsNativeMode] = useState(false)
 
-  // Initialize renderer
+  // Initialize viewport
   useEffect(() => {
-    const initRenderer = async () => {
-      if (!containerRef.current) return
+    let mounted = true
+
+    const init = async () => {
+      // Prevent duplicate initialization
+      if (initializingRef.current) {
+        console.log("[Viewport] Already initializing, skipping duplicate call")
+        return
+      }
+
+      if (!containerRef.current || !canvasRef.current) return
 
       const rect = containerRef.current.getBoundingClientRect()
       const width = Math.floor(rect.width)
       const height = Math.floor(rect.height)
 
       if (width === 0 || height === 0) {
-        setTimeout(initRenderer, 100)
+        setTimeout(init, 100)
         return
       }
 
+      initializingRef.current = true
+
+      canvasRef.current.width = width
+      canvasRef.current.height = height
+
       try {
-        const success = await viewportApi.init(width, height)
-        if (success) {
+        // Try native mode first (60+ FPS)
+        // Pass the position of the viewport within the main window
+        const x = Math.floor(rect.left)
+        const y = Math.floor(rect.top)
+
+        console.log(`[Viewport] Attempting NATIVE mode ${width}x${height} at (${x}, ${y})...`)
+        const isNative = await viewportApi.initNative(width, height, x, y)
+
+        if (mounted) {
+          setIsNativeMode(isNative)
           setIsInitialized(true)
-          setError(null)
-        } else {
-          setError("Renderer initialization failed")
+          setSize(width, height)
+
+          if (isNative) {
+            // In native mode, set high FPS indicator
+            setFps(60, 16.67)
+          }
+
+          console.log(
+            `[Viewport] Initialized ${width}x${height} - ${isNative ? "NATIVE" : "OFFSCREEN"} mode`,
+          )
         }
       } catch (e) {
-        console.error("[Viewport] Init error:", e)
-        setError(e instanceof Error ? e.message : String(e))
+        console.error("[Viewport] Native init failed, falling back to offscreen:", e)
+
+        // Fallback to offscreen mode
+        try {
+          await viewportApi.init(width, height)
+          if (mounted) {
+            setIsNativeMode(false)
+            setIsInitialized(true)
+            setSize(width, height)
+            console.log(`[Viewport] Initialized ${width}x${height} - OFFSCREEN mode (fallback)`)
+          }
+        } catch (e2) {
+          if (mounted) {
+            setError(e2 instanceof Error ? e2.message : String(e2))
+          }
+        }
       }
     }
 
-    initRenderer()
-  }, [])
+    init()
+    return () => {
+      mounted = false
+    }
+  }, [setSize, setFps])
 
-  // Render loop with FPS tracking
+  // Render loop for offscreen mode (only runs when NOT in native mode)
   useEffect(() => {
+    // In native mode, the Rust render thread handles rendering
+    if (isNativeMode) {
+      console.log("[Viewport] Native mode active - skipping JS render loop")
+      return
+    }
+
     if (!isInitialized || !canvasRef.current) return
 
     const canvas = canvasRef.current
-    const ctx = canvas.getContext("2d")
+    const ctx = canvas.getContext("2d", { alpha: false })
     if (!ctx) return
 
     let running = true
-    let frameId: number | null = null
-    let errorCount = 0
-    const MAX_ERRORS = 5
+    let frameCount = 0
+    let lastFpsUpdate = performance.now()
 
-    const updateFps = () => {
-      const now = performance.now()
-      const frameTimes = frameTimesRef.current
+    // Pre-allocate ImageData for reuse (avoids GC pressure)
+    let cachedImageData: ImageData | null = null
+    let cachedWidth = 0
+    let cachedHeight = 0
 
-      // Add current frame time
-      frameTimes.push(now)
-
-      // Keep only last 60 frames
-      while (frameTimes.length > 60) {
-        frameTimes.shift()
+    // Fast base64 decode
+    const decodeBase64Fast = (base64: string): Uint8ClampedArray => {
+      const binaryString = atob(base64)
+      const len = binaryString.length
+      const bytes = new Uint8ClampedArray(len)
+      // Unrolled loop for better performance
+      for (let i = 0; i < len; i += 4) {
+        bytes[i] = binaryString.charCodeAt(i)
+        bytes[i + 1] = binaryString.charCodeAt(i + 1)
+        bytes[i + 2] = binaryString.charCodeAt(i + 2)
+        bytes[i + 3] = binaryString.charCodeAt(i + 3)
       }
-
-      // Calculate FPS from frame times
-      if (frameTimes.length >= 2) {
-        const elapsed = frameTimes[frameTimes.length - 1] - frameTimes[0]
-        const fps = Math.round((frameTimes.length - 1) / (elapsed / 1000))
-        const frameTime = Math.round(elapsed / (frameTimes.length - 1) * 100) / 100
-        setFps(fps, frameTime)
-      }
+      return bytes
     }
 
     const render = async () => {
       if (!running) return
 
-      const frameStart = performance.now()
-
       try {
-        const frameData = await viewportApi.renderFrame()
-        errorCount = 0
+        const dataUri = await viewportApi.renderFrame()
 
-        if (frameData && ctx && running) {
-          const match = frameData.match(/width=(\d+);height=(\d+);base64,(.+)/)
-          if (match) {
-            const width = parseInt(match[1], 10)
-            const height = parseInt(match[2], 10)
-            const base64 = match[3]
+        // Parse: data:image/rgba;width=W;height=H;base64,DATA
+        const match = dataUri.match(/^data:image\/rgba;width=(\d+);height=(\d+);base64,(.+)$/)
+        if (match && canvas.width > 0 && canvas.height > 0) {
+          const width = Number.parseInt(match[1], 10)
+          const height = Number.parseInt(match[2], 10)
+          const base64Data = match[3]
 
-            if (width <= 0 || height <= 0) {
-              if (running) frameId = requestAnimationFrame(render)
-              return
-            }
+          // Decode base64 to RGBA
+          const rgbaData = decodeBase64Fast(base64Data)
 
-            const binary = atob(base64)
-            const bytes = new Uint8Array(binary.length)
-            for (let i = 0; i < binary.length; i++) {
-              bytes[i] = binary.charCodeAt(i)
-            }
-
-            const expectedLength = width * height * 4
-            if (bytes.length !== expectedLength) {
-              if (running) frameId = requestAnimationFrame(render)
-              return
-            }
-
-            const imageData = new ImageData(new Uint8ClampedArray(bytes.buffer), width, height)
-
-            if (canvas.width !== width || canvas.height !== height) {
-              canvas.width = width
-              canvas.height = height
-            }
-
-            ctx.putImageData(imageData, 0, 0)
-            updateFps()
+          // Reuse ImageData if dimensions match
+          if (cachedWidth !== width || cachedHeight !== height) {
+            cachedImageData = new ImageData(width, height)
+            cachedWidth = width
+            cachedHeight = height
           }
+
+          cachedImageData!.data.set(rgbaData)
+          ctx.putImageData(cachedImageData!, 0, 0)
+        }
+
+        // FPS calculation
+        frameCount++
+        const now = performance.now()
+        if (now - lastFpsUpdate >= 1000) {
+          setFps(frameCount, frameCount > 0 ? 1000 / frameCount : 0)
+          frameCount = 0
+          lastFpsUpdate = now
         }
       } catch (e) {
-        errorCount++
-        if (errorCount > MAX_ERRORS) {
-          await new Promise(resolve => setTimeout(resolve, 100))
-          errorCount = 0
-        }
+        console.error("[Viewport] Render error:", e)
       }
 
       if (running) {
-        frameId = requestAnimationFrame(render)
+        animationFrameRef.current = requestAnimationFrame(render)
       }
     }
 
-    frameId = requestAnimationFrame(render)
+    render()
 
     return () => {
       running = false
-      if (frameId !== null) cancelAnimationFrame(frameId)
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+      }
     }
-  }, [isInitialized, setFps])
+  }, [isInitialized, isNativeMode, setFps])
+
+  // Handle resize
+  useEffect(() => {
+    if (!containerRef.current || !isInitialized) return
+
+    const observer = new ResizeObserver(async (entries) => {
+      for (const entry of entries) {
+        const rect = entry.target.getBoundingClientRect()
+        const w = Math.floor(rect.width)
+        const h = Math.floor(rect.height)
+        const x = Math.floor(rect.left)
+        const y = Math.floor(rect.top)
+
+        if (w > 0 && h > 0 && canvasRef.current) {
+          canvasRef.current.width = w
+          canvasRef.current.height = h
+          setSize(w, h)
+          try {
+            if (isNativeMode) {
+              // In native mode, update the native window bounds
+              await viewportApi.updateBounds(x, y, w, h)
+            } else {
+              // In offscreen mode, just resize the renderer
+              await viewportApi.resize(w, h)
+            }
+          } catch (e) {
+            console.error("[Viewport] Resize error:", e)
+          }
+        }
+      }
+    })
+
+    observer.observe(containerRef.current)
+    return () => observer.disconnect()
+  }, [isInitialized, isNativeMode, setSize])
+
+  // In native mode, listen for window move events to reposition viewport
+  useEffect(() => {
+    if (!isNativeMode || !containerRef.current) return
+
+    // Function to update viewport bounds
+    const updateViewportBounds = async () => {
+      if (!containerRef.current) return
+      const rect = containerRef.current.getBoundingClientRect()
+      const x = Math.floor(rect.left)
+      const y = Math.floor(rect.top)
+      const w = Math.floor(rect.width)
+      const h = Math.floor(rect.height)
+
+      if (w > 0 && h > 0) {
+        try {
+          await viewportApi.updateBounds(x, y, w, h)
+        } catch (e) {
+          console.error("[Viewport] Update bounds error:", e)
+        }
+      }
+    }
+
+    // Listen for scroll/layout changes that might affect position
+    const handleScroll = () => updateViewportBounds()
+    window.addEventListener("scroll", handleScroll, true)
+
+    // Use an interval to periodically sync position (handles window moves)
+    const intervalId = setInterval(updateViewportBounds, 100)
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll, true)
+      clearInterval(intervalId)
+    }
+  }, [isNativeMode])
 
   // Camera control handlers
   const handlePointerDown = useCallback((e: PointerEvent<HTMLDivElement>) => {
@@ -275,7 +400,7 @@ function ViewportCanvas() {
   }, [])
 
   const handlePointerMove = useCallback(
-    (e: PointerEvent<HTMLDivElement>) => {
+    async (e: PointerEvent<HTMLDivElement>) => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect()
         const x = e.clientX - rect.left
@@ -291,13 +416,18 @@ function ViewportCanvas() {
       const deltaY = e.clientY - lastPointer.current.y
       lastPointer.current = { x: e.clientX, y: e.clientY }
 
-      if (dragMode.current === "orbit") {
-        viewportApi.orbit(deltaX, deltaY)
-      } else if (dragMode.current === "pan") {
-        viewportApi.pan(deltaX, deltaY)
+      try {
+        if (dragMode.current === "orbit") {
+          // Use native commands for better performance
+          await viewportApi.orbitNative(deltaX, deltaY)
+        } else if (dragMode.current === "pan") {
+          await viewportApi.panNative(deltaX, deltaY)
+        }
+      } catch (e) {
+        console.error("Camera control error:", e)
       }
     },
-    [setCursorPosition]
+    [setCursorPosition],
   )
 
   const handlePointerUp = useCallback((e: PointerEvent<HTMLDivElement>) => {
@@ -308,52 +438,27 @@ function ViewportCanvas() {
     }
   }, [])
 
-  const handleWheel = useCallback((e: WheelEvent<HTMLDivElement>) => {
+  const handleWheel = useCallback(async (e: WheelEvent<HTMLDivElement>) => {
     e.preventDefault()
     const delta = e.deltaY > 0 ? 100 : -100
-    viewportApi.zoom(delta)
+
+    try {
+      await viewportApi.zoomNative(delta)
+    } catch (e) {
+      console.error("Zoom error:", e)
+    }
   }, [])
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
   }, [])
 
-  // Handle resize with debounce
-  useEffect(() => {
-    if (!containerRef.current) return
-
-    let resizeTimeout: ReturnType<typeof setTimeout> | null = null
-
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0]
-      if (entry) {
-        const { width, height } = entry.contentRect
-        const w = Math.floor(width)
-        const h = Math.floor(height)
-
-        if (w === 0 || h === 0) return
-
-        if (resizeTimeout) clearTimeout(resizeTimeout)
-        resizeTimeout = setTimeout(() => {
-          setSize(w, h)
-          viewportApi.resize(w, h)
-        }, 100) // Increased debounce for stability
-      }
-    })
-
-    observer.observe(containerRef.current)
-    return () => {
-      if (resizeTimeout) clearTimeout(resizeTimeout)
-      observer.disconnect()
-    }
-  }, [setSize])
-
   return (
     <div
       ref={containerRef}
       role="application"
       aria-label="3D Viewport"
-      className="absolute inset-0 flex items-center justify-center cursor-crosshair touch-none"
+      className="absolute inset-0 cursor-crosshair touch-none bg-[#1a1a1a]"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -361,32 +466,154 @@ function ViewportCanvas() {
       onWheel={handleWheel}
       onContextMenu={handleContextMenu}
     >
-      {isInitialized ? (
-        <canvas
-          ref={canvasRef}
-          className="absolute inset-0 w-full h-full"
-          style={{ imageRendering: "pixelated" }}
-        />
-      ) : (
-        <div className="text-center pointer-events-none">
-          <div className="mb-4 opacity-10">
-            <HugeiconsIcon icon={CubeIcon} size={80} />
+      {!isInitialized && !error && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-center pointer-events-none">
+            <div className="mb-4 opacity-10">
+              <HugeiconsIcon icon={CubeIcon} size={80} />
+            </div>
+            <p className="text-sm text-muted-foreground/60">Initializing wgpu...</p>
           </div>
-          {error ? (
-            <>
-              <p className="text-sm text-red-400/80">{error}</p>
-              <p className="mt-1 text-xs text-muted-foreground/40">wgpu initialization failed</p>
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-muted-foreground/60">Initializing wgpu viewport...</p>
-              <p className="mt-1 text-xs text-muted-foreground/40">
-                Orbit: Alt+Click | Pan: Alt+Shift+Click | Zoom: Scroll
-              </p>
-            </>
-          )}
         </div>
       )}
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-center pointer-events-none">
+            <p className="text-sm text-red-400/80">{error}</p>
+          </div>
+        </div>
+      )}
+      {/* Viewport Corners - 16px Rounded Effect with seamless border integration */}
+      <div className="absolute inset-0 pointer-events-none z-20">
+        {/* Top Left */}
+        <svg width="16" height="16" viewBox="0 0 16 16" className="absolute top-0 left-0 fill-card">
+          <path d="M0 0 L16 0 Q0 0 0 16 L0 0 Z" />
+          <path d="M16 0 Q0 0 0 16" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-border/30" />
+        </svg>
+        {/* Top Right */}
+        <svg width="16" height="16" viewBox="0 0 16 16" className="absolute top-0 right-0 fill-card">
+          <path d="M16 0 L0 0 Q16 0 16 16 L16 0 Z" />
+          <path d="M0 0 Q16 0 16 16" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-border/30" />
+        </svg>
+        {/* Bottom Left */}
+        <svg width="16" height="16" viewBox="0 0 16 16" className="absolute bottom-0 left-0 fill-card">
+          <path d="M0 16 L16 16 Q0 16 0 0 L0 16 Z" />
+          <path d="M16 16 Q0 16 0 0" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-border/30" />
+        </svg>
+        {/* Bottom Right */}
+        <svg width="16" height="16" viewBox="0 0 16 16" className="absolute bottom-0 right-0 fill-card">
+          <path d="M16 16 L0 16 Q16 16 16 0 L16 16 Z" />
+          <path d="M0 16 Q16 16 16 0" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-border/30" />
+        </svg>
+      </div>
+
+      {/* Canvas is only used for offscreen mode - hidden in native mode */}
+      <canvas
+        ref={canvasRef}
+        className={`absolute inset-0 w-full h-full ${isInitialized && !isNativeMode ? "" : "opacity-0"}`}
+        style={{ imageRendering: "auto", pointerEvents: isNativeMode ? "none" : "auto" }}
+      />
+    </div>
+  )
+}
+
+// ============================================================================
+// BOTTOM TOOLBAR - Horizontal controls bar
+// ============================================================================
+
+function BottomToolbar() {
+  const [maxEvents, setMaxEvents] = useState(64)
+  const [foliation, setFoliation] = useState(0)
+
+  return (
+    <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center pointer-events-none z-10">
+      <div className="flex items-end pointer-events-auto">
+        {/* Left corner decoration */}
+        <svg 
+          width="10" 
+          height="36" 
+          viewBox="0 0 10 10" 
+          className="block shrink-0 fill-card"
+          preserveAspectRatio="none"
+        >
+          <path d="M10 0 L10 10 L0 10 Q10 10 10 0" />
+          <path d="M10 0 Q10 10 0 10" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-border/20" />
+        </svg>
+
+        {/* Main toolbar content */}
+        <div className="flex items-center h-9 px-3 bg-card border-t border-border/20 gap-3 rounded-t-[var(--radius)]">
+          {/* Layout toggle button */}
+          <button
+            type="button"
+            className="p-1 text-muted-foreground hover:text-foreground transition-colors rounded hover:bg-accent"
+            title="Switch to horizontal layout"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path d="M3 8h10M10 5l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+
+          {/* Separator */}
+          <div className="w-px h-4 bg-border/30" />
+
+          {/* Max Events slider */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+              Max Events
+            </span>
+            <div className="relative w-20 flex items-center">
+              <input
+                type="range"
+                min="8"
+                max="256"
+                step="8"
+                value={maxEvents}
+                onChange={(e) => setMaxEvents(Number(e.target.value))}
+                className="w-full h-1 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
+              />
+            </div>
+            <span className="text-[10px] text-muted-foreground font-medium w-6 text-right">
+              {maxEvents}
+            </span>
+          </div>
+
+          {/* Separator */}
+          <div className="w-px h-4 bg-border/30" />
+
+          {/* Foliation slider */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+              Foliation
+            </span>
+            <div className="relative w-20 flex items-center">
+              <input
+                type="range"
+                min="-100"
+                max="100"
+                step="5"
+                value={foliation}
+                onChange={(e) => setFoliation(Number(e.target.value))}
+                className="w-full h-1 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
+              />
+            </div>
+            <span className="text-[10px] text-muted-foreground font-medium w-6 text-right">
+              {foliation}
+            </span>
+          </div>
+        </div>
+
+        {/* Right corner decoration */}
+        <svg 
+          width="10" 
+          height="36" 
+          viewBox="0 0 10 10" 
+          className="block shrink-0 fill-card"
+          preserveAspectRatio="none"
+        >
+          <path d="M0 0 Q0 10 10 10 L0 10 L0 0" />
+          <path d="M0 0 Q0 10 10 10" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-border/20" />
+        </svg>
+      </div>
     </div>
   )
 }
@@ -397,9 +624,10 @@ function ViewportCanvas() {
 
 export function ViewportPanel() {
   return (
-    <div className="relative h-full w-full bg-[#1a1a1a] overflow-hidden">
+    <div className="relative h-full w-full overflow-hidden">
       <ViewportCanvas />
       <ViewportToolbar />
+      <BottomToolbar />
     </div>
   )
 }

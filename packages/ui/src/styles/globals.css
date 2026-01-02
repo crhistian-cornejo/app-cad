@@ -171,13 +171,13 @@
   /* Based on VS Code Dark+ theme colors */
   --background: #1e1e1e;                    /* Cursor/VSCode main background */
   --foreground: #d4d4d4;                    /* Cursor/VSCode main text color */
-  --card: #252526;                          /* Cursor/VSCode panel background */
+  --card: #232520;                          /* Updated to match toolbar */
   --card-foreground: #d4d4d4;               /* Panel text */
-  --popover: #252526;                       /* Popover matches panel */
+  --popover: #232520;                       /* Popover matches panel */
   --popover-foreground: #d4d4d4;            /* Popover text */
   --primary: oklch(0.42 0.18 266);          /* Violet accent */
   --primary-foreground: #fafafa;            /* neutral-50 */
-  --secondary: #252526;                     /* Secondary surfaces match panels */
+  --secondary: #232520;                     /* Secondary surfaces match panels */
   --secondary-foreground: #d4d4d4;          /* Secondary text */
   --muted: #2d2d30;                         /* Cursor/VSCode muted background */
   --muted-foreground: #9c9c9c;              /* Cursor/VSCode muted text - improved contrast */
@@ -185,7 +185,7 @@
   --accent-foreground: #d4d4d4;             /* Accent text */
   --destructive: #ef4444;                   /* red-500 */
   --border: #3e3e42;                        /* Cursor/VSCode border color */
-  --input: #252526;                         /* Input backgrounds match panels */
+  --input: #232520;                         /* Input backgrounds match panels */
   --ring: #9c9c9c;                          /* Ring color - improved contrast */
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
@@ -201,7 +201,7 @@
   --sidebar-border: #3e3e42;                /* Sidebar borders */
   --sidebar-ring: #9c9c9c;                  /* Sidebar ring - improved contrast */
   /* Custom toolbar background */
-  --toolbar-bg: #252526;                    /* Toolbar matches panel background */
+  --toolbar-bg: #232520;                    /* Toolbar matches panel background */
   /* Tooltip colors - Cursor/VSCode style */
   --tooltip: #3e3e42;                       /* Cursor/VSCode tooltip background */
   --tooltip-foreground: #d4d4d4;            /* Cursor/VSCode tooltip text */
