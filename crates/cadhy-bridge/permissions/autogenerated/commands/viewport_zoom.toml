@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-viewport-zoom"
+description = "Enables the viewport_zoom command without any pre-configured scope."
+commands.allow = ["viewport_zoom"]
+
+[[permission]]
+identifier = "deny-viewport-zoom"
+description = "Denies the viewport_zoom command without any pre-configured scope."
+commands.deny = ["viewport_zoom"]

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-viewport-frame-all"
+description = "Enables the viewport_frame_all command without any pre-configured scope."
+commands.allow = ["viewport_frame_all"]
+
+[[permission]]
+identifier = "deny-viewport-frame-all"
+description = "Denies the viewport_frame_all command without any pre-configured scope."
+commands.deny = ["viewport_frame_all"]

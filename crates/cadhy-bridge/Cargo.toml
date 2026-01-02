@@ -1,0 +1,47 @@
+[package]
+name = "cadhy-bridge"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+links = "cadhy-bridge"
+
+[dependencies]
+# Tauri
+tauri = { workspace = true, features = ["protocol-asset"] }
+
+# Error handling
+thiserror.workspace = true
+anyhow.workspace = true
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+
+# Math - for DTOs
+glam.workspace = true
+
+# UUID
+uuid.workspace = true
+
+# Async
+tokio.workspace = true
+pollster = "0.4"
+
+# Base64 for frame encoding
+base64 = "0.22"
+
+# Logging
+tracing.workspace = true
+
+# Internal crates
+cadhy-viewport.workspace = true
+cadhy-commands.workspace = true
+# cadhy-kernel.workspace = true  # TODO: Enable when OCCT is configured
+# cadhy-hydraulics.workspace = true  # TODO: Enable when needed
+
+[build-dependencies]
+tauri-plugin = { workspace = true, features = ["build"] }
+
+[dev-dependencies]
+pretty_assertions.workspace = true

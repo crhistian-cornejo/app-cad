@@ -1,0 +1,14 @@
+[package]
+name = "cadhy-io"
+version.workspace = true
+edition = "2024"
+license.workspace = true
+description = "File I/O for CADHY (STL, OBJ export)"
+
+[dependencies]
+thiserror.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true

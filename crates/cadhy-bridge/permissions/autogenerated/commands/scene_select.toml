@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-scene-select"
+description = "Enables the scene_select command without any pre-configured scope."
+commands.allow = ["scene_select"]
+
+[[permission]]
+identifier = "deny-scene-select"
+description = "Denies the scene_select command without any pre-configured scope."
+commands.deny = ["scene_select"]

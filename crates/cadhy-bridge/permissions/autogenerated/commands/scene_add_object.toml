@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-scene-add-object"
+description = "Enables the scene_add_object command without any pre-configured scope."
+commands.allow = ["scene_add_object"]
+
+[[permission]]
+identifier = "deny-scene-add-object"
+description = "Denies the scene_add_object command without any pre-configured scope."
+commands.deny = ["scene_add_object"]

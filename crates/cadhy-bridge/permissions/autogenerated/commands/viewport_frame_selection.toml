@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-viewport-frame-selection"
+description = "Enables the viewport_frame_selection command without any pre-configured scope."
+commands.allow = ["viewport_frame_selection"]
+
+[[permission]]
+identifier = "deny-viewport-frame-selection"
+description = "Denies the viewport_frame_selection command without any pre-configured scope."
+commands.deny = ["viewport_frame_selection"]

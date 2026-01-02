@@ -1,0 +1,17 @@
+{
+  "name": "cadhy",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "bun run --filter @cadhy/desktop dev",
+    "build": "bun run --filter @cadhy/desktop build",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "typecheck": "bun run --filter '*' typecheck"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@tailwindcss/postcss": "^4.1.18",
+    "typescript": "^5.7.2"
+  }
+}

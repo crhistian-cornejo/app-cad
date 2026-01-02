@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-project-can-undo"
+description = "Enables the project_can_undo command without any pre-configured scope."
+commands.allow = ["project_can_undo"]
+
+[[permission]]
+identifier = "deny-project-can-undo"
+description = "Denies the project_can_undo command without any pre-configured scope."
+commands.deny = ["project_can_undo"]

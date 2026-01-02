@@ -1,0 +1,90 @@
+[workspace]
+resolver = "2"
+members = [
+  "apps/desktop/src-tauri",
+  "crates/cadhy-bridge",
+  "crates/cadhy-cad",
+  "crates/cadhy-commands",
+  "crates/cadhy-core",
+  "crates/cadhy-hydraulics",
+  "crates/cadhy-io",
+  "crates/cadhy-mesh",
+  "crates/cadhy-project",
+  "crates/cadhy-viewport",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["CADHY Team"]
+license = "MIT"
+repository = "https://github.com/cadhy/cadhy"
+
+[workspace.dependencies]
+# Tauri
+tauri = { version = "2", features = ["macos-private-api"] }
+tauri-build = "2"
+tauri-plugin = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-store = "2"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-window-state = "2"
+tauri-plugin-shell = "2"
+
+# Async
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Graphics
+wgpu = "24"
+winit = "0.30"
+raw-window-handle = "0.6"
+bytemuck = { version = "1", features = ["derive"] }
+glam = { version = "0.29", features = ["serde"] }
+nalgebra = { version = "0.33", features = ["serde-serialize"] }
+
+# Utils
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2"
+anyhow = "1"
+log = "0.4"
+env_logger = "0.11"
+base64 = "0.22"
+parking_lot = "0.12"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# Testing
+pretty_assertions = "1"
+
+# FFI
+cxx = "1"
+cxx-build = "1"
+cc = "1"
+
+# TypeScript bindings
+ts-rs = { version = "10", features = ["serde-compat", "uuid-impl"] }
+
+# Crates internos
+cadhy-core = { path = "crates/cadhy-core" }
+cadhy-cad = { path = "crates/cadhy-cad" }
+cadhy-mesh = { path = "crates/cadhy-mesh" }
+cadhy-hydraulics = { path = "crates/cadhy-hydraulics" }
+cadhy-bridge = { path = "crates/cadhy-bridge" }
+cadhy-viewport = { path = "crates/cadhy-viewport" }
+cadhy-commands = { path = "crates/cadhy-commands" }
+cadhy-io = { path = "crates/cadhy-io" }
+cadhy-project = { path = "crates/cadhy-project" }
+
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-project-ping"
+description = "Enables the project_ping command without any pre-configured scope."
+commands.allow = ["project_ping"]
+
+[[permission]]
+identifier = "deny-project-ping"
+description = "Denies the project_ping command without any pre-configured scope."
+commands.deny = ["project_ping"]

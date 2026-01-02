@@ -1,0 +1,37 @@
+# Default permissions for the cadhy plugin
+# This grants access to all cadhy commands
+
+"$schema" = "schemas/schema.json"
+
+[default]
+description = "Default permissions for CADHY 3D plugin - grants access to all commands"
+permissions = [
+    "allow-project-ping",
+    "allow-project-new",
+    "allow-project-undo",
+    "allow-project-redo",
+    "allow-project-can-undo",
+    "allow-project-can-redo",
+    "allow-viewport-init",
+    "allow-viewport-is-initialized",
+    "allow-viewport-render-frame",
+    "allow-viewport-resize",
+    "allow-viewport-get-size",
+    "allow-viewport-set-camera",
+    "allow-viewport-get-camera",
+    "allow-viewport-orbit",
+    "allow-viewport-pan",
+    "allow-viewport-zoom",
+    "allow-viewport-frame-selection",
+    "allow-viewport-frame-all",
+    "allow-scene-get-objects",
+    "allow-scene-add-object",
+    "allow-scene-add-primitive",
+    "allow-scene-add-cube",
+    "allow-scene-remove-object",
+    "allow-scene-select",
+    "allow-scene-deselect-all",
+    "allow-scene-get-selection",
+    "allow-scene-set-transform",
+    "allow-scene-get-transform",
+]

@@ -1,0 +1,773 @@
+/**
+ * CADHY - Global Styles with Tailwind CSS v4
+ * Based on base-vega style with OKLCH color system
+ */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/noto-sans";
+
+/* Source paths for Tailwind to scan for classes in monorepo */
+@source "../components/**/*.tsx";
+@source "../../../apps/desktop/src/**/*.tsx";
+@source "../node_modules/streamdown/dist/index.js";
+
+/* ============================================
+   SHADCN CUSTOM VARIANTS (for component animations)
+   Source: shadcn/dist/tailwind.css
+   ============================================ */
+
+/* Custom variants for shadcn/ui components */
+@custom-variant data-open {
+
+  &:where([data-state="open"]),
+  &:where([data-open]:not([data-open="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-closed {
+
+  &:where([data-state="closed"]),
+  &:where([data-closed]:not([data-closed="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-checked {
+
+  &:where([data-state="checked"]),
+  &:where([data-checked]:not([data-checked="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-unchecked {
+
+  &:where([data-state="unchecked"]),
+  &:where([data-unchecked]:not([data-unchecked="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-selected {
+  &:where([data-selected="true"]) {
+    @slot;
+  }
+}
+
+@custom-variant data-disabled {
+
+  &:where([data-disabled="true"]),
+  &:where([data-disabled]:not([data-disabled="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-active {
+
+  &:where([data-state="active"]),
+  &:where([data-active]:not([data-active="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-horizontal {
+  &:where([data-orientation="horizontal"]) {
+    @slot;
+  }
+}
+
+@custom-variant data-vertical {
+  &:where([data-orientation="vertical"]) {
+    @slot;
+  }
+}
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* End of shadcn tailwind.css */
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================
+   LIGHT THEME (Default)
+   ============================================ */
+
+:root {
+  /* Light theme using Tailwind neutral palette */
+  --background: #fafafa;                    /* neutral-50 - Base background */
+  --foreground: #171717;                    /* neutral-900 - Main text */
+  --card: #ffffff;                          /* white - Card surfaces */
+  --card-foreground: #171717;               /* neutral-900 */
+  --popover: #ffffff;                       /* white - Popover bg */
+  --popover-foreground: #171717;            /* neutral-900 */
+  --primary: oklch(0.488 0.243 264.376);    /* Violet accent */
+  --primary-foreground: #fafafa;            /* neutral-50 */
+  --secondary: #f5f5f5;                     /* neutral-100 - Secondary surfaces */
+  --secondary-foreground: #171717;          /* neutral-900 */
+  --muted: #f5f5f5;                         /* neutral-100 - Muted backgrounds */
+  --muted-foreground: #737373;              /* neutral-500 - Muted text */
+  --accent: #e5e5e5;                        /* neutral-200 - Accent/hover surfaces */
+  --accent-foreground: #171717;             /* neutral-900 */
+  --destructive: #ef4444;                   /* red-500 */
+  --border: #e5e5e5;                        /* neutral-200 - Borders */
+  --input: #f5f5f5;                         /* neutral-100 - Input backgrounds */
+  --ring: #a3a3a3;                          /* neutral-400 */
+  --chart-1: oklch(0.809 0.105 251.813);
+  --chart-2: oklch(0.623 0.214 259.815);
+  --chart-3: oklch(0.546 0.245 262.881);
+  --chart-4: oklch(0.488 0.243 264.376);
+  --chart-5: oklch(0.424 0.199 265.638);
+  --radius: 1rem;
+  --sidebar: #fafafa;                       /* neutral-50 - Sidebar bg */
+  --sidebar-foreground: #171717;            /* neutral-900 */
+  --sidebar-primary: oklch(0.546 0.245 262.881);
+  --sidebar-primary-foreground: #fafafa;    /* neutral-50 */
+  --sidebar-accent: #e5e5e5;                /* neutral-200 */
+  --sidebar-accent-foreground: #171717;     /* neutral-900 */
+  --sidebar-border: #e5e5e5;                /* neutral-200 */
+  --sidebar-ring: #a3a3a3;                  /* neutral-400 */
+  /* Tooltip colors - consistent with theme surfaces */
+  --tooltip: #ffffff;                       /* white - Light tooltip bg */
+  --tooltip-foreground: #171717;            /* neutral-900 - Dark tooltip text */
+
+  /* Semantic status colors */
+  --status-success: oklch(0.65 0.18 145);   /* green */
+  --status-success-bg: oklch(0.65 0.18 145 / 0.1);
+  --status-success-border: oklch(0.65 0.18 145 / 0.3);
+  --status-warning: oklch(0.75 0.15 85);    /* yellow */
+  --status-warning-bg: oklch(0.75 0.15 85 / 0.1);
+  --status-warning-border: oklch(0.75 0.15 85 / 0.3);
+  --status-error: oklch(0.55 0.2 25);       /* red */
+  --status-error-bg: oklch(0.55 0.2 25 / 0.1);
+  --status-error-border: oklch(0.55 0.2 25 / 0.3);
+  --status-info: oklch(0.6 0.15 245);       /* blue */
+  --status-info-bg: oklch(0.6 0.15 245 / 0.1);
+  --status-info-border: oklch(0.6 0.15 245 / 0.3);
+  --status-detecting: oklch(0.75 0.15 55);  /* orange */
+  --status-detecting-bg: oklch(0.75 0.15 55 / 0.1);
+  --status-detecting-border: oklch(0.75 0.15 55 / 0.3);
+
+  /* Axis colors for 3D viewport */
+  --axis-x: oklch(0.55 0.2 25);             /* red */
+  --axis-y: oklch(0.65 0.18 145);           /* green */
+  --axis-z: oklch(0.6 0.15 245);            /* blue */
+}
+
+/* ============================================
+   DARK THEME
+   ============================================ */
+
+.dark {
+  /* Cursor/VSCode-style dark theme - matching Cursor editor colors */
+  /* Based on VS Code Dark+ theme colors */
+  --background: #1e1e1e;                    /* Cursor/VSCode main background */
+  --foreground: #d4d4d4;                    /* Cursor/VSCode main text color */
+  --card: #252526;                          /* Cursor/VSCode panel background */
+  --card-foreground: #d4d4d4;               /* Panel text */
+  --popover: #252526;                       /* Popover matches panel */
+  --popover-foreground: #d4d4d4;            /* Popover text */
+  --primary: oklch(0.42 0.18 266);          /* Violet accent */
+  --primary-foreground: #fafafa;            /* neutral-50 */
+  --secondary: #252526;                     /* Secondary surfaces match panels */
+  --secondary-foreground: #d4d4d4;          /* Secondary text */
+  --muted: #2d2d30;                         /* Cursor/VSCode muted background */
+  --muted-foreground: #9c9c9c;              /* Cursor/VSCode muted text - improved contrast */
+  --accent: #3e3e42;                        /* Cursor/VSCode accent/hover */
+  --accent-foreground: #d4d4d4;             /* Accent text */
+  --destructive: #ef4444;                   /* red-500 */
+  --border: #3e3e42;                        /* Cursor/VSCode border color */
+  --input: #252526;                         /* Input backgrounds match panels */
+  --ring: #9c9c9c;                          /* Ring color - improved contrast */
+  --chart-1: oklch(0.809 0.105 251.813);
+  --chart-2: oklch(0.623 0.214 259.815);
+  --chart-3: oklch(0.546 0.245 262.881);
+  --chart-4: oklch(0.488 0.243 264.376);
+  --chart-5: oklch(0.424 0.199 265.638);
+  --sidebar: #1e1e1e;                       /* Sidebar matches main background */
+  --sidebar-foreground: #d4d4d4;            /* Sidebar text */
+  --sidebar-primary: oklch(0.623 0.214 259.815);
+  --sidebar-primary-foreground: #fafafa;    /* neutral-50 */
+  --sidebar-accent: #3e3e42;                /* Sidebar accent */
+  --sidebar-accent-foreground: #d4d4d4;     /* Sidebar accent text */
+  --sidebar-border: #3e3e42;                /* Sidebar borders */
+  --sidebar-ring: #9c9c9c;                  /* Sidebar ring - improved contrast */
+  /* Custom toolbar background */
+  --toolbar-bg: #252526;                    /* Toolbar matches panel background */
+  /* Tooltip colors - Cursor/VSCode style */
+  --tooltip: #3e3e42;                       /* Cursor/VSCode tooltip background */
+  --tooltip-foreground: #d4d4d4;            /* Cursor/VSCode tooltip text */
+
+  /* Semantic status colors - Dark mode (slightly brighter) */
+  --status-success: oklch(0.7 0.18 145);
+  --status-success-bg: oklch(0.7 0.18 145 / 0.15);
+  --status-success-border: oklch(0.7 0.18 145 / 0.35);
+  --status-warning: oklch(0.8 0.15 85);
+  --status-warning-bg: oklch(0.8 0.15 85 / 0.15);
+  --status-warning-border: oklch(0.8 0.15 85 / 0.35);
+  --status-error: oklch(0.6 0.2 25);
+  --status-error-bg: oklch(0.6 0.2 25 / 0.15);
+  --status-error-border: oklch(0.6 0.2 25 / 0.35);
+  --status-info: oklch(0.65 0.15 245);
+  --status-info-bg: oklch(0.65 0.15 245 / 0.15);
+  --status-info-border: oklch(0.65 0.15 245 / 0.35);
+  --status-detecting: oklch(0.8 0.15 55);
+  --status-detecting-bg: oklch(0.8 0.15 55 / 0.15);
+  --status-detecting-border: oklch(0.8 0.15 55 / 0.35);
+
+  /* Axis colors - Dark mode */
+  --axis-x: oklch(0.6 0.2 25);
+  --axis-y: oklch(0.7 0.18 145);
+  --axis-z: oklch(0.65 0.15 245);
+}
+
+/* ============================================
+   THEME CONFIGURATION
+   ============================================ */
+
+@theme inline {
+  --font-sans: "Noto Sans Variable", sans-serif;
+  --font-heading: "Chillax", "Noto Sans Variable", sans-serif;
+  --color-toolbar-bg: var(--toolbar-bg);
+  --color-tooltip: var(--tooltip);
+  --color-tooltip-foreground: var(--tooltip-foreground);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  /* Semantic status colors for Tailwind */
+  --color-status-success: var(--status-success);
+  --color-status-success-bg: var(--status-success-bg);
+  --color-status-success-border: var(--status-success-border);
+  --color-status-warning: var(--status-warning);
+  --color-status-warning-bg: var(--status-warning-bg);
+  --color-status-warning-border: var(--status-warning-border);
+  --color-status-error: var(--status-error);
+  --color-status-error-bg: var(--status-error-bg);
+  --color-status-error-border: var(--status-error-border);
+  --color-status-info: var(--status-info);
+  --color-status-info-bg: var(--status-info-bg);
+  --color-status-info-border: var(--status-info-border);
+  --color-status-detecting: var(--status-detecting);
+  --color-status-detecting-bg: var(--status-detecting-bg);
+  --color-status-detecting-border: var(--status-detecting-border);
+
+  /* Axis colors for 3D viewport */
+  --color-axis-x: var(--axis-x);
+  --color-axis-y: var(--axis-y);
+  --color-axis-z: var(--axis-z);
+
+  /* Accordion animations from shadcn */
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+
+    to {
+      height: var(--radix-accordion-content-height, var(--accordion-panel-height, auto));
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height, var(--accordion-panel-height, auto));
+    }
+
+    to {
+      height: 0;
+    }
+  }
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply font-sans;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply font-sans bg-background text-foreground;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  #root {
+    @apply w-screen h-screen flex flex-col overflow-hidden;
+  }
+}
+
+/* ============================================
+   DESKTOP APP SPECIFIC STYLES
+   ============================================ */
+
+/* Allow text selection in form elements */
+input,
+textarea,
+[contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--muted);
+  border-radius: 9999px;
+  border: 1px solid transparent;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) transparent;
+}
+
+/* ============================================
+   FORM ELEMENTS
+   ============================================ */
+
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+textarea:not([data-no-focus-ring]),
+select {
+  @apply w-full px-3 py-2 transition-all duration-150;
+  background-color: var(--input);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+}
+
+/* Clean textareas (like AI chat) - no background or border */
+textarea[data-no-focus-ring] {
+  background-color: transparent;
+  border: none;
+}
+
+input:focus,
+textarea:focus:not([data-no-focus-ring]),
+select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px oklch(0.488 0.243 264.376 / 0.2);
+  outline: none;
+}
+
+/* Textareas with data-no-focus-ring should have NO focus styles */
+textarea[data-no-focus-ring]:focus {
+  border-color: transparent;
+  box-shadow: none;
+  outline: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted-foreground);
+}
+
+input:disabled,
+textarea:disabled,
+select:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+/* Remove number input spinners */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* ============================================
+   SELECTION
+   ============================================ */
+
+::selection {
+  background-color: var(--primary);
+  color: white;
+}
+
+/* ============================================
+   TYPOGRAPHY
+   ============================================ */
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+}
+
+h1 {
+  @apply scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl;
+}
+
+h2 {
+  @apply scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0;
+}
+
+h3 {
+  @apply scroll-m-20 text-2xl font-semibold tracking-tight;
+}
+
+h4 {
+  @apply scroll-m-20 text-xl font-semibold tracking-tight;
+}
+
+h5 {
+  @apply scroll-m-20 text-lg font-semibold tracking-tight;
+}
+
+h6 {
+  @apply scroll-m-20 text-base font-semibold tracking-tight;
+}
+
+.lead {
+  @apply text-xl text-muted-foreground;
+}
+
+.large {
+  @apply text-lg font-semibold;
+}
+
+.small {
+  @apply text-sm font-medium leading-none;
+}
+
+.muted {
+  @apply text-sm text-muted-foreground;
+}
+
+/* ============================================
+   CADHY TYPOGRAPHY UTILITIES
+   ============================================ */
+
+/* Section headers with uppercase styling */
+.section-label {
+  @apply text-xs font-medium uppercase tracking-wide text-muted-foreground;
+}
+
+/* Form labels and UI labels */
+.ui-label {
+  @apply text-xs font-medium;
+}
+
+/* Standard UI text size */
+.ui-text {
+  @apply text-sm;
+}
+
+/* Captions and secondary information */
+.ui-caption {
+  @apply text-xs text-muted-foreground;
+}
+
+blockquote {
+  @apply mt-6 border-l-2 pl-6 italic;
+}
+
+code {
+  @apply relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold;
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+  }
+}
+
+/* ============================================
+   PANEL COMPONENTS
+   ============================================ */
+
+.panel {
+  @apply flex flex-col h-full overflow-hidden;
+  background-color: var(--card);
+}
+
+.panel-header {
+  @apply flex items-center justify-between px-2 py-1 min-h-8;
+  background-color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-title {
+  @apply flex items-center gap-2 text-sm font-medium uppercase tracking-wide;
+  color: var(--muted-foreground);
+}
+
+/* ============================================
+   RESIZE HANDLES
+   ============================================ */
+
+.resize-handle {
+  background-color: var(--border);
+  transition: background-color 0.15s ease;
+}
+
+.resize-handle:hover,
+.resize-handle[data-resize-handle-active] {
+  background-color: var(--primary);
+}
+
+/* ============================================
+   FOLDER COLORS
+   ============================================ */
+
+:root {
+  --folder-back: oklch(0.55 0.12 245);
+  --folder-front: oklch(0.65 0.14 245);
+  --folder-tab: oklch(0.6 0.13 245);
+}
+
+.dark {
+  --folder-back: oklch(0.45 0.1 245);
+  --folder-front: oklch(0.55 0.12 245);
+  --folder-tab: oklch(0.5 0.11 245);
+}
+
+/* Folder color presets via data attribute */
+[data-folder-color="blue"] {
+  --folder-back: oklch(0.55 0.12 245);
+  --folder-front: oklch(0.65 0.14 245);
+  --folder-tab: oklch(0.6 0.13 245);
+}
+
+[data-folder-color="green"] {
+  --folder-back: oklch(0.55 0.14 145);
+  --folder-front: oklch(0.65 0.16 145);
+  --folder-tab: oklch(0.6 0.15 145);
+}
+
+[data-folder-color="orange"] {
+  --folder-back: oklch(0.65 0.16 55);
+  --folder-front: oklch(0.75 0.18 55);
+  --folder-tab: oklch(0.7 0.17 55);
+}
+
+[data-folder-color="purple"] {
+  --folder-back: oklch(0.55 0.15 300);
+  --folder-front: oklch(0.65 0.17 300);
+  --folder-tab: oklch(0.6 0.16 300);
+}
+
+[data-folder-color="red"] {
+  --folder-back: oklch(0.55 0.18 25);
+  --folder-front: oklch(0.65 0.20 25);
+  --folder-tab: oklch(0.6 0.19 25);
+}
+
+[data-folder-color="teal"] {
+  --folder-back: oklch(0.55 0.12 185);
+  --folder-front: oklch(0.65 0.14 185);
+  --folder-tab: oklch(0.6 0.13 185);
+}
+
+[data-folder-color="yellow"] {
+  --folder-back: oklch(0.75 0.14 85);
+  --folder-front: oklch(0.85 0.16 85);
+  --folder-tab: oklch(0.8 0.15 85);
+}
+
+[data-folder-color="pink"] {
+  --folder-back: oklch(0.65 0.15 350);
+  --folder-front: oklch(0.75 0.17 350);
+  --folder-tab: oklch(0.7 0.16 350);
+}
+
+[data-folder-color="gray"] {
+  --folder-back: oklch(0.5 0.01 0);
+  --folder-front: oklch(0.6 0.01 0);
+  --folder-tab: oklch(0.55 0.01 0);
+}
+
+.bg-folder-back {
+  background-color: var(--folder-back);
+}
+
+.bg-folder-front {
+  background-color: var(--folder-front);
+}
+
+.bg-folder-tab {
+  background-color: var(--folder-tab);
+}
+
+/* ============================================
+   FOLDER ANIMATIONS
+   ============================================ */
+
+@keyframes fly-to-folder {
+  0% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.6) translateY(-30px);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(0.2) translateY(-60px);
+    opacity: 0;
+  }
+}
+
+.animate-fly-to-folder {
+  animation: fly-to-folder 300ms ease-in forwards;
+}
+
+/* ============================================
+   STREAMDOWN / SHIKI CODE HIGHLIGHTING
+   ============================================ */
+
+/* Streamdown prose styles for AI responses */
+[data-slot="message-response"] {
+  /* Ensure proper prose rendering */
+  line-height: 1.6;
+}
+
+/* Shiki code block styling - Light mode */
+[data-slot="message-response"] pre {
+  background-color: var(--muted);
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+[data-slot="message-response"] pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+/* Shiki code block styling - Dark mode */
+.dark [data-slot="message-response"] pre {
+  background-color: oklch(0.18 0.005 285);
+}
+
+/* Shiki theme integration */
+[data-slot="message-response"] .shiki,
+[data-slot="message-response"] .shiki span {
+  color: var(--shiki-light);
+  background-color: var(--shiki-light-bg);
+}
+
+.dark [data-slot="message-response"] .shiki,
+.dark [data-slot="message-response"] .shiki span {
+  color: var(--shiki-dark);
+  background-color: var(--shiki-dark-bg);
+}
+
+/* Copy button styling for code blocks */
+[data-slot="message-response"] pre [data-slot="copy-button"] {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+[data-slot="message-response"] pre:hover [data-slot="copy-button"] {
+  opacity: 1;
+}
+
+/* Streamdown incomplete link handling */
+[data-slot="message-response"] a[href="streamdown:incomplete-link"] {
+  color: var(--muted-foreground);
+  pointer-events: none;
+  text-decoration: none;
+}
+
+/* KaTeX / Math styling */
+[data-slot="message-response"] .katex {
+  font-size: 1em;
+}
+
+[data-slot="message-response"] .katex-display {
+  margin: 1rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}

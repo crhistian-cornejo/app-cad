@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-viewport-get-camera"
+description = "Enables the viewport_get_camera command without any pre-configured scope."
+commands.allow = ["viewport_get_camera"]
+
+[[permission]]
+identifier = "deny-viewport-get-camera"
+description = "Denies the viewport_get_camera command without any pre-configured scope."
+commands.deny = ["viewport_get_camera"]

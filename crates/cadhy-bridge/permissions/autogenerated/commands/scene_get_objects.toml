@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-scene-get-objects"
+description = "Enables the scene_get_objects command without any pre-configured scope."
+commands.allow = ["scene_get_objects"]
+
+[[permission]]
+identifier = "deny-scene-get-objects"
+description = "Denies the scene_get_objects command without any pre-configured scope."
+commands.deny = ["scene_get_objects"]

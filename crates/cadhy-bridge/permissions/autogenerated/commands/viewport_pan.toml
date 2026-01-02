@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-viewport-pan"
+description = "Enables the viewport_pan command without any pre-configured scope."
+commands.allow = ["viewport_pan"]
+
+[[permission]]
+identifier = "deny-viewport-pan"
+description = "Denies the viewport_pan command without any pre-configured scope."
+commands.deny = ["viewport_pan"]

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-viewport-init"
+description = "Enables the viewport_init command without any pre-configured scope."
+commands.allow = ["viewport_init"]
+
+[[permission]]
+identifier = "deny-viewport-init"
+description = "Denies the viewport_init command without any pre-configured scope."
+commands.deny = ["viewport_init"]

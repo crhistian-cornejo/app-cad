@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-scene-set-transform"
+description = "Enables the scene_set_transform command without any pre-configured scope."
+commands.allow = ["scene_set_transform"]
+
+[[permission]]
+identifier = "deny-scene-set-transform"
+description = "Denies the scene_set_transform command without any pre-configured scope."
+commands.deny = ["scene_set_transform"]

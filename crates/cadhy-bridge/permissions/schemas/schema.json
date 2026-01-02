@@ -1,0 +1,642 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PermissionFile",
+  "description": "Permission file that can define a default permission, a set of permissions or a list of inlined permissions.",
+  "type": "object",
+  "properties": {
+    "default": {
+      "description": "The default permission set for the plugin",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/DefaultPermission"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "set": {
+      "description": "A list of permissions sets defined",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/PermissionSet"
+      }
+    },
+    "permission": {
+      "description": "A list of inlined permissions",
+      "default": [],
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Permission"
+      }
+    }
+  },
+  "definitions": {
+    "DefaultPermission": {
+      "description": "The default permission set of the plugin.\n\nWorks similarly to a permission with the \"default\" identifier.",
+      "type": "object",
+      "required": [
+        "permissions"
+      ],
+      "properties": {
+        "version": {
+          "description": "The version of the permission.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 1.0
+        },
+        "description": {
+          "description": "Human-readable description of what the permission does. Tauri convention is to use `<h4>` headings in markdown content for Tauri documentation generation purposes.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "permissions": {
+          "description": "All permissions this set contains.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "PermissionSet": {
+      "description": "A set of direct permissions grouped together under a new name.",
+      "type": "object",
+      "required": [
+        "description",
+        "identifier",
+        "permissions"
+      ],
+      "properties": {
+        "identifier": {
+          "description": "A unique identifier for the permission.",
+          "type": "string"
+        },
+        "description": {
+          "description": "Human-readable description of what the permission does.",
+          "type": "string"
+        },
+        "permissions": {
+          "description": "All permissions this set contains.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PermissionKind"
+          }
+        }
+      }
+    },
+    "Permission": {
+      "description": "Descriptions of explicit privileges of commands.\n\nIt can enable commands to be accessible in the frontend of the application.\n\nIf the scope is defined it can be used to fine grain control the access of individual or multiple commands.",
+      "type": "object",
+      "required": [
+        "identifier"
+      ],
+      "properties": {
+        "version": {
+          "description": "The version of the permission.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 1.0
+        },
+        "identifier": {
+          "description": "A unique identifier for the permission.",
+          "type": "string"
+        },
+        "description": {
+          "description": "Human-readable description of what the permission does. Tauri internal convention is to use `<h4>` headings in markdown content for Tauri documentation generation purposes.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "commands": {
+          "description": "Allowed or denied commands when using this permission.",
+          "default": {
+            "allow": [],
+            "deny": []
+          },
+          "allOf": [
+            {
+              "$ref": "#/definitions/Commands"
+            }
+          ]
+        },
+        "scope": {
+          "description": "Allowed or denied scoped when using this permission.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Scopes"
+            }
+          ]
+        },
+        "platforms": {
+          "description": "Target platforms this permission applies. By default all platforms are affected by this permission.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Target"
+          }
+        }
+      }
+    },
+    "Commands": {
+      "description": "Allowed and denied commands inside a permission.\n\nIf two commands clash inside of `allow` and `deny`, it should be denied by default.",
+      "type": "object",
+      "properties": {
+        "allow": {
+          "description": "Allowed command.",
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deny": {
+          "description": "Denied command, which takes priority.",
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Scopes": {
+      "description": "An argument for fine grained behavior control of Tauri commands.\n\nIt can be of any serde serializable type and is used to allow or prevent certain actions inside a Tauri command. The configured scope is passed to the command and will be enforced by the command implementation.\n\n## Example\n\n```json { \"allow\": [{ \"path\": \"$HOME/**\" }], \"deny\": [{ \"path\": \"$HOME/secret.txt\" }] } ```",
+      "type": "object",
+      "properties": {
+        "allow": {
+          "description": "Data that defines what is allowed by the scope.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Value"
+          }
+        },
+        "deny": {
+          "description": "Data that defines what is denied by the scope. This should be prioritized by validation logic.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Value"
+          }
+        }
+      }
+    },
+    "Value": {
+      "description": "All supported ACL values.",
+      "anyOf": [
+        {
+          "description": "Represents a null JSON value.",
+          "type": "null"
+        },
+        {
+          "description": "Represents a [`bool`].",
+          "type": "boolean"
+        },
+        {
+          "description": "Represents a valid ACL [`Number`].",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Number"
+            }
+          ]
+        },
+        {
+          "description": "Represents a [`String`].",
+          "type": "string"
+        },
+        {
+          "description": "Represents a list of other [`Value`]s.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Value"
+          }
+        },
+        {
+          "description": "Represents a map of [`String`] keys to [`Value`]s.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/Value"
+          }
+        }
+      ]
+    },
+    "Number": {
+      "description": "A valid ACL number.",
+      "anyOf": [
+        {
+          "description": "Represents an [`i64`].",
+          "type": "integer",
+          "format": "int64"
+        },
+        {
+          "description": "Represents a [`f64`].",
+          "type": "number",
+          "format": "double"
+        }
+      ]
+    },
+    "Target": {
+      "description": "Platform target.",
+      "oneOf": [
+        {
+          "description": "MacOS.",
+          "type": "string",
+          "enum": [
+            "macOS"
+          ]
+        },
+        {
+          "description": "Windows.",
+          "type": "string",
+          "enum": [
+            "windows"
+          ]
+        },
+        {
+          "description": "Linux.",
+          "type": "string",
+          "enum": [
+            "linux"
+          ]
+        },
+        {
+          "description": "Android.",
+          "type": "string",
+          "enum": [
+            "android"
+          ]
+        },
+        {
+          "description": "iOS.",
+          "type": "string",
+          "enum": [
+            "iOS"
+          ]
+        }
+      ]
+    },
+    "PermissionKind": {
+      "type": "string",
+      "oneOf": [
+        {
+          "description": "Enables the project_can_redo command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-project-can-redo",
+          "markdownDescription": "Enables the project_can_redo command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the project_can_redo command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-project-can-redo",
+          "markdownDescription": "Denies the project_can_redo command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the project_can_undo command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-project-can-undo",
+          "markdownDescription": "Enables the project_can_undo command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the project_can_undo command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-project-can-undo",
+          "markdownDescription": "Denies the project_can_undo command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the project_new command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-project-new",
+          "markdownDescription": "Enables the project_new command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the project_new command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-project-new",
+          "markdownDescription": "Denies the project_new command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the project_ping command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-project-ping",
+          "markdownDescription": "Enables the project_ping command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the project_ping command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-project-ping",
+          "markdownDescription": "Denies the project_ping command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the project_redo command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-project-redo",
+          "markdownDescription": "Enables the project_redo command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the project_redo command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-project-redo",
+          "markdownDescription": "Denies the project_redo command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the project_undo command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-project-undo",
+          "markdownDescription": "Enables the project_undo command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the project_undo command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-project-undo",
+          "markdownDescription": "Denies the project_undo command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the scene_add_cube command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-scene-add-cube",
+          "markdownDescription": "Enables the scene_add_cube command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the scene_add_cube command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-scene-add-cube",
+          "markdownDescription": "Denies the scene_add_cube command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the scene_add_object command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-scene-add-object",
+          "markdownDescription": "Enables the scene_add_object command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the scene_add_object command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-scene-add-object",
+          "markdownDescription": "Denies the scene_add_object command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the scene_add_primitive command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-scene-add-primitive",
+          "markdownDescription": "Enables the scene_add_primitive command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the scene_add_primitive command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-scene-add-primitive",
+          "markdownDescription": "Denies the scene_add_primitive command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the scene_deselect_all command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-scene-deselect-all",
+          "markdownDescription": "Enables the scene_deselect_all command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the scene_deselect_all command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-scene-deselect-all",
+          "markdownDescription": "Denies the scene_deselect_all command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the scene_get_objects command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-scene-get-objects",
+          "markdownDescription": "Enables the scene_get_objects command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the scene_get_objects command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-scene-get-objects",
+          "markdownDescription": "Denies the scene_get_objects command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the scene_get_selection command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-scene-get-selection",
+          "markdownDescription": "Enables the scene_get_selection command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the scene_get_selection command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-scene-get-selection",
+          "markdownDescription": "Denies the scene_get_selection command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the scene_get_transform command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-scene-get-transform",
+          "markdownDescription": "Enables the scene_get_transform command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the scene_get_transform command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-scene-get-transform",
+          "markdownDescription": "Denies the scene_get_transform command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the scene_remove_object command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-scene-remove-object",
+          "markdownDescription": "Enables the scene_remove_object command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the scene_remove_object command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-scene-remove-object",
+          "markdownDescription": "Denies the scene_remove_object command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the scene_select command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-scene-select",
+          "markdownDescription": "Enables the scene_select command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the scene_select command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-scene-select",
+          "markdownDescription": "Denies the scene_select command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the scene_set_transform command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-scene-set-transform",
+          "markdownDescription": "Enables the scene_set_transform command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the scene_set_transform command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-scene-set-transform",
+          "markdownDescription": "Denies the scene_set_transform command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the viewport_frame_all command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-viewport-frame-all",
+          "markdownDescription": "Enables the viewport_frame_all command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the viewport_frame_all command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-viewport-frame-all",
+          "markdownDescription": "Denies the viewport_frame_all command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the viewport_frame_selection command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-viewport-frame-selection",
+          "markdownDescription": "Enables the viewport_frame_selection command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the viewport_frame_selection command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-viewport-frame-selection",
+          "markdownDescription": "Denies the viewport_frame_selection command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the viewport_get_camera command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-viewport-get-camera",
+          "markdownDescription": "Enables the viewport_get_camera command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the viewport_get_camera command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-viewport-get-camera",
+          "markdownDescription": "Denies the viewport_get_camera command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the viewport_get_size command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-viewport-get-size",
+          "markdownDescription": "Enables the viewport_get_size command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the viewport_get_size command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-viewport-get-size",
+          "markdownDescription": "Denies the viewport_get_size command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the viewport_init command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-viewport-init",
+          "markdownDescription": "Enables the viewport_init command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the viewport_init command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-viewport-init",
+          "markdownDescription": "Denies the viewport_init command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the viewport_is_initialized command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-viewport-is-initialized",
+          "markdownDescription": "Enables the viewport_is_initialized command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the viewport_is_initialized command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-viewport-is-initialized",
+          "markdownDescription": "Denies the viewport_is_initialized command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the viewport_orbit command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-viewport-orbit",
+          "markdownDescription": "Enables the viewport_orbit command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the viewport_orbit command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-viewport-orbit",
+          "markdownDescription": "Denies the viewport_orbit command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the viewport_pan command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-viewport-pan",
+          "markdownDescription": "Enables the viewport_pan command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the viewport_pan command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-viewport-pan",
+          "markdownDescription": "Denies the viewport_pan command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the viewport_render_frame command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-viewport-render-frame",
+          "markdownDescription": "Enables the viewport_render_frame command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the viewport_render_frame command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-viewport-render-frame",
+          "markdownDescription": "Denies the viewport_render_frame command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the viewport_resize command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-viewport-resize",
+          "markdownDescription": "Enables the viewport_resize command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the viewport_resize command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-viewport-resize",
+          "markdownDescription": "Denies the viewport_resize command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the viewport_set_camera command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-viewport-set-camera",
+          "markdownDescription": "Enables the viewport_set_camera command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the viewport_set_camera command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-viewport-set-camera",
+          "markdownDescription": "Denies the viewport_set_camera command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the viewport_zoom command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-viewport-zoom",
+          "markdownDescription": "Enables the viewport_zoom command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the viewport_zoom command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-viewport-zoom",
+          "markdownDescription": "Denies the viewport_zoom command without any pre-configured scope."
+        },
+        {
+          "description": "Default permissions for CADHY 3D plugin - grants access to all commands\n#### This default permission set includes:\n\n- `allow-project-ping`\n- `allow-project-new`\n- `allow-project-undo`\n- `allow-project-redo`\n- `allow-project-can-undo`\n- `allow-project-can-redo`\n- `allow-viewport-init`\n- `allow-viewport-is-initialized`\n- `allow-viewport-render-frame`\n- `allow-viewport-resize`\n- `allow-viewport-get-size`\n- `allow-viewport-set-camera`\n- `allow-viewport-get-camera`\n- `allow-viewport-orbit`\n- `allow-viewport-pan`\n- `allow-viewport-zoom`\n- `allow-viewport-frame-selection`\n- `allow-viewport-frame-all`\n- `allow-scene-get-objects`\n- `allow-scene-add-object`\n- `allow-scene-add-primitive`\n- `allow-scene-add-cube`\n- `allow-scene-remove-object`\n- `allow-scene-select`\n- `allow-scene-deselect-all`\n- `allow-scene-get-selection`\n- `allow-scene-set-transform`\n- `allow-scene-get-transform`",
+          "type": "string",
+          "const": "default",
+          "markdownDescription": "Default permissions for CADHY 3D plugin - grants access to all commands\n#### This default permission set includes:\n\n- `allow-project-ping`\n- `allow-project-new`\n- `allow-project-undo`\n- `allow-project-redo`\n- `allow-project-can-undo`\n- `allow-project-can-redo`\n- `allow-viewport-init`\n- `allow-viewport-is-initialized`\n- `allow-viewport-render-frame`\n- `allow-viewport-resize`\n- `allow-viewport-get-size`\n- `allow-viewport-set-camera`\n- `allow-viewport-get-camera`\n- `allow-viewport-orbit`\n- `allow-viewport-pan`\n- `allow-viewport-zoom`\n- `allow-viewport-frame-selection`\n- `allow-viewport-frame-all`\n- `allow-scene-get-objects`\n- `allow-scene-add-object`\n- `allow-scene-add-primitive`\n- `allow-scene-add-cube`\n- `allow-scene-remove-object`\n- `allow-scene-select`\n- `allow-scene-deselect-all`\n- `allow-scene-get-selection`\n- `allow-scene-set-transform`\n- `allow-scene-get-transform`"
+        }
+      ]
+    }
+  }
+}

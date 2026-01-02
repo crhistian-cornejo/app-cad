@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-viewport-resize"
+description = "Enables the viewport_resize command without any pre-configured scope."
+commands.allow = ["viewport_resize"]
+
+[[permission]]
+identifier = "deny-viewport-resize"
+description = "Denies the viewport_resize command without any pre-configured scope."
+commands.deny = ["viewport_resize"]
