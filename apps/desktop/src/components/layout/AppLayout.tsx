@@ -32,10 +32,11 @@ import { useLayoutStore } from "@/stores/layout-store"
 import { useViewportStore } from "@/stores/viewport-store"
 import { ViewportPanel } from "../viewport/ViewportPanel"
 import { SettingsDialog } from "../dialogs/SettingsDialog"
+import { ScenePanel } from "../panels/ScenePanel"
+import { PropertiesPanel } from "../panels/PropertiesPanel"
 import { projectApi } from "@/lib/tauri"
 import { open as openDialog } from "@tauri-apps/plugin-dialog"
 import { toast } from "sonner"
-import { getCurrentWindow } from "@tauri-apps/api/window"
 
 export function AppLayout() {
   const { theme, setTheme, borderRadius } = useLayoutStore()
@@ -47,12 +48,7 @@ export function AppLayout() {
     {
       id: "scene",
       label: "Scene",
-      badge: "WIP",
-      content: (
-        <div className="p-3 text-sm text-muted-foreground">
-          <p>No objects in scene</p>
-        </div>
-      ),
+      content: <ScenePanel />,
     },
     {
       id: "layers",
@@ -70,12 +66,7 @@ export function AppLayout() {
     {
       id: "properties",
       label: "Properties",
-      badge: "WIP",
-      content: (
-        <div className="p-3 text-sm text-muted-foreground">
-          <p>Select an object to view properties</p>
-        </div>
-      ),
+      content: <PropertiesPanel />,
     },
     {
       id: "inspector",

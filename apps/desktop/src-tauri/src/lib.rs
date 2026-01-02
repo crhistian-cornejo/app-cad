@@ -289,21 +289,30 @@ pub fn run() {
                                         }
                                     }
                                     ViewportMessage::Orbit { delta_x, delta_y } => {
-                                        // Higher sensitivity for pixel-based input
-                                        let sensitivity = 0.01;
-                                        let offset = camera.position - camera.target;
-                                        let distance = offset.length();
-                                        let mut theta = offset.z.atan2(offset.x);
-                                        let mut phi = (offset.y / distance).acos();
-                                        theta -= delta_x * sensitivity;
-                                        phi = (phi + delta_y * sensitivity)
-                                            .clamp(0.01, std::f32::consts::PI - 0.01);
-                                        camera.position = camera.target
-                                            + glam::Vec3::new(
-                                                distance * phi.sin() * theta.cos(),
-                                                distance * phi.cos(),
-                                                distance * phi.sin() * theta.sin(),
-                                            );
+                                        // Orbit around target using spherical coordinates
+                                        let sensitivity = 0.005;
+
+                                        // Get current camera offset from target
+                                        let dir = camera.position - camera.target;
+                                        let radius = dir.length();
+
+                                        // Convert to spherical: yaw (horizontal), pitch (vertical)
+                                        let mut yaw = dir.z.atan2(dir.x);
+                                        let mut pitch = (dir.y / radius).asin();
+
+                                        // Apply rotation - horizontal mouse = yaw, vertical = pitch
+                                        yaw -= delta_x * sensitivity;
+                                        pitch += delta_y * sensitivity;
+
+                                        // Clamp pitch to avoid gimbal lock
+                                        pitch = pitch.clamp(-1.5, 1.5);
+
+                                        // Convert back to Cartesian
+                                        camera.position = camera.target + glam::Vec3::new(
+                                            radius * pitch.cos() * yaw.cos(),
+                                            radius * pitch.sin(),
+                                            radius * pitch.cos() * yaw.sin(),
+                                        );
                                     }
                                     ViewportMessage::Pan { delta_x, delta_y } => {
                                         let sensitivity = 0.01;

@@ -170,8 +170,8 @@
   --card-foreground: #d4d4d4; /* Panel text */
   --popover: #232520; /* Popover matches panel */
   --popover-foreground: #d4d4d4; /* Popover text */
-  --primary: oklch(0.42 0.18 266); /* Violet accent */
-  --primary-foreground: #fafafa; /* neutral-50 */
+  --primary: oklch(0.68 0.16 260); /* Vibrant blue-violet for better contrast */
+  --primary-foreground: #ffffff;
   --secondary: #232520; /* Secondary surfaces match panels */
   --secondary-foreground: #d4d4d4; /* Secondary text */
   --muted: #2d2d30; /* Cursor/VSCode muted background */

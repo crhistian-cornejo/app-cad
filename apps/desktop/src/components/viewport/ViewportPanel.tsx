@@ -165,75 +165,72 @@ function ViewportCanvas() {
   }, [isInitialized])
 
   // Camera control handlers
+  // Camera controls - Works on both Windows and macOS with mouse and trackpad
+  // Left click/drag = orbit, Middle click/drag or Shift+Left = pan, Scroll = zoom
   const handlePointerDown = useCallback((e: PointerEvent<HTMLDivElement>) => {
-    // Left click = orbit, Middle click = pan, Shift+Left = pan
+    // Button 0 = left, 1 = middle, 2 = right
     if (e.button === 0 || e.button === 1) {
       e.preventDefault()
       e.stopPropagation()
       isDragging.current = true
       lastMousePos.current = { x: e.clientX, y: e.clientY }
-      // Middle mouse or Shift+Left = pan, otherwise orbit
-      dragMode.current = e.button === 1 || e.shiftKey ? "pan" : "orbit"
-      console.log(
-        `[Viewport] Drag started: mode=${dragMode.current}, pos=(${e.clientX}, ${e.clientY})`,
-      )
-      // Use containerRef for consistent pointer capture
-      containerRef.current?.setPointerCapture(e.pointerId)
+
+      // Middle mouse (1) or Shift+Left = pan, otherwise orbit
+      // Also support Ctrl+Left for pan on macOS trackpad
+      const isPan = e.button === 1 || e.shiftKey || (e.ctrlKey && e.button === 0)
+      dragMode.current = isPan ? "pan" : "orbit"
+
+      // Capture pointer to receive events even when cursor leaves element
+      if (containerRef.current) {
+        containerRef.current.setPointerCapture(e.pointerId)
+      }
     }
   }, [])
 
-  const handlePointerMove = useCallback(
-    async (e: PointerEvent<HTMLDivElement>) => {
-      if (!isDragging.current || !isInitialized) return
-      e.stopPropagation()
+  const handlePointerMove = useCallback((e: PointerEvent<HTMLDivElement>) => {
+    if (!isDragging.current || !isInitialized) return
 
-      const deltaX = e.clientX - lastMousePos.current.x
-      const deltaY = e.clientY - lastMousePos.current.y
+    const deltaX = e.clientX - lastMousePos.current.x
+    const deltaY = e.clientY - lastMousePos.current.y
+    lastMousePos.current = { x: e.clientX, y: e.clientY }
 
-      // Skip if no movement
-      if (deltaX === 0 && deltaY === 0) return
+    // Skip if no movement
+    if (deltaX === 0 && deltaY === 0) return
 
-      try {
-        // Use wgpuOverlayApi for inverted architecture
-        // Pass raw pixel deltas - sensitivity is handled in Rust
-        if (dragMode.current === "orbit") {
-          console.log(`[Viewport] Orbit: dx=${deltaX}, dy=${deltaY}`)
-          await wgpuOverlayApi.orbit(deltaX, deltaY)
-        } else {
-          console.log(`[Viewport] Pan: dx=${deltaX}, dy=${deltaY}`)
-          await wgpuOverlayApi.pan(deltaX, deltaY)
-        }
-      } catch (error) {
-        console.error("[Viewport] Camera control error:", error)
-      }
-
-      lastMousePos.current = { x: e.clientX, y: e.clientY }
-    },
-    [isInitialized],
-  )
+    // Fire and forget - don't await to avoid blocking the event loop
+    if (dragMode.current === "orbit") {
+      wgpuOverlayApi.orbit(deltaX, deltaY).catch(console.error)
+    } else {
+      wgpuOverlayApi.pan(deltaX, deltaY).catch(console.error)
+    }
+  }, [isInitialized])
 
   const handlePointerUp = useCallback((e: PointerEvent<HTMLDivElement>) => {
     if (isDragging.current) {
       isDragging.current = false
-      containerRef.current?.releasePointerCapture(e.pointerId)
-      console.log("[Viewport] Drag ended")
+      if (containerRef.current) {
+        containerRef.current.releasePointerCapture(e.pointerId)
+      }
     }
   }, [])
 
-  const handleWheel = useCallback(
-    async (e: WheelEvent<HTMLDivElement>) => {
-      if (!isInitialized) return
-      e.preventDefault()
+  // Handle pointer leaving the window
+  const handlePointerLeave = useCallback((e: PointerEvent<HTMLDivElement>) => {
+    // Don't stop dragging if pointer is captured
+    if (isDragging.current && !containerRef.current?.hasPointerCapture(e.pointerId)) {
+      isDragging.current = false
+    }
+  }, [])
 
-      try {
-        // Pass raw delta - sensitivity handled in Rust
-        await wgpuOverlayApi.zoom(-e.deltaY)
-      } catch (error) {
-        console.error("[Viewport] Zoom error:", error)
-      }
-    },
-    [isInitialized],
-  )
+  const handleWheel = useCallback((e: WheelEvent<HTMLDivElement>) => {
+    if (!isInitialized) return
+    e.preventDefault()
+
+    // Normalize scroll delta across different input devices
+    // deltaY is typically ~100 for mouse wheel, smaller for trackpad
+    const delta = e.deltaY
+    wgpuOverlayApi.zoom(-delta).catch(console.error)
+  }, [isInitialized])
 
   // No render loop needed - wgpu runs continuously in Rust
 
@@ -243,12 +240,17 @@ function ViewportCanvas() {
       role="application"
       aria-label="3D Viewport"
       // Inverted architecture: transparent so wgpu content shows through
-      // wgpu renders to entire window BEHIND this webview
-      className="absolute inset-0 cursor-crosshair touch-none bg-transparent"
-      style={{ backgroundColor: "transparent", pointerEvents: "auto" }}
+      // Use rgba with 0.001 alpha to ensure pointer events work on all platforms
+      className="absolute inset-0 cursor-crosshair touch-none"
+      style={{
+        backgroundColor: "rgba(0, 0, 0, 0.001)", // Near-transparent but ensures pointer events work
+        pointerEvents: "auto",
+      }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerLeave}
+      onPointerCancel={handlePointerUp}
       onWheel={handleWheel}
     >
       {/* Loading state */}

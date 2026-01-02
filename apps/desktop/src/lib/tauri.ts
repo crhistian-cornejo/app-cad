@@ -81,10 +81,65 @@ export const viewportApi = {
   clearDirty: () => invoke<void>("plugin:cadhy-bridge|viewport_clear_dirty"),
 }
 
-// Scene API
+// Scene API (cadhy-bridge plugin commands)
+export interface SceneObjectDto {
+  id: string
+  name: string
+  visible: boolean
+  selected: boolean
+  object_type: "Mesh" | "Curve" | "Point" | "Light" | "Camera" | "Group"
+}
+
+export interface SelectionDto {
+  count: number
+  ids: string[]
+}
+
+export interface TransformDto {
+  position: [number, number, number]
+  rotation: [number, number, number, number] // quaternion
+  scale: [number, number, number]
+}
+
+export type PrimitiveParams =
+  | { Box: { width: number; height: number; depth: number } }
+  | { Sphere: { radius: number } }
+  | { Cylinder: { radius: number; height: number } }
+  | { Cone: { radius: number; height: number } }
+  | { Torus: { major_radius: number; minor_radius: number } }
+  | { Plane: { width: number; height: number } }
+
 export const sceneApi = {
-  addCube: (name: string, size: number) =>
-    invoke<string>("plugin:cadhy-bridge|scene_add_cube", { name, size }),
+  // Object management
+  getObjects: () => invoke<SceneObjectDto[]>("plugin:cadhy-bridge|scene_get_objects"),
+
+  addObject: (name: string, transform?: TransformDto) =>
+    invoke<string>("plugin:cadhy-bridge|scene_add_object", { name, transform }),
+
+  removeObject: (id: string) =>
+    invoke<void>("plugin:cadhy-bridge|scene_remove_object", { id }),
+
+  // Primitives
+  addPrimitive: (name: string, primitive: PrimitiveParams, transform?: TransformDto) =>
+    invoke<string>("plugin:cadhy-bridge|scene_add_primitive", { name, primitive, transform }),
+
+  addCube: (name?: string, size?: number, transform?: TransformDto) =>
+    invoke<string>("plugin:cadhy-bridge|scene_add_cube", { name, size, transform }),
+
+  // Selection
+  select: (ids: string[], extend?: boolean) =>
+    invoke<SelectionDto>("plugin:cadhy-bridge|scene_select", { ids, extend: extend ?? false }),
+
+  deselectAll: () => invoke<void>("plugin:cadhy-bridge|scene_deselect_all"),
+
+  getSelection: () => invoke<SelectionDto>("plugin:cadhy-bridge|scene_get_selection"),
+
+  // Transforms
+  setTransform: (id: string, transform: TransformDto) =>
+    invoke<void>("plugin:cadhy-bridge|scene_set_transform", { id, transform }),
+
+  getTransform: (id: string) =>
+    invoke<TransformDto>("plugin:cadhy-bridge|scene_get_transform", { id }),
 }
 
 // Project API
