@@ -642,27 +642,25 @@ pub async fn viewport_update_bounds<R: Runtime>(
         return Ok(());
     }
 
-    // Get the main window to calculate title bar offset
+    // Get the main window to calculate coordinate conversion
     let main_window = match app.get_webview_window("main") {
         Some(w) => w,
         None => return Ok(()),
     };
 
     let scale_factor = main_window.scale_factor().unwrap_or(1.0);
-    
-    // Get title bar offset by comparing outer and inner positions
-    let outer_pos = main_window.outer_position()
+
+    // Get parent window's inner size for coordinate conversion
+    let inner_size = main_window.inner_size()
         .map_err(|e| crate::error::BridgeError::ViewportInit(e.to_string()))?;
-    let inner_pos = main_window.inner_position()
-        .map_err(|e| crate::error::BridgeError::ViewportInit(e.to_string()))?;
-    
-    // Title bar height in physical pixels, convert to logical
-    let title_bar_height_physical = inner_pos.y - outer_pos.y;
-    let title_bar_height = (title_bar_height_physical as f64 / scale_factor) as i32;
-    
-    // For child windows with parent(), position is relative to parent's outer bounds
+
+    // Convert from logical to physical pixels for inner size
+    let parent_height_logical = inner_size.height as f64 / scale_factor;
+
+    // macOS child windows with parent() use bottom-left origin
+    // Convert from top-down (CSS) to bottom-up (macOS) coordinates
     let child_x = x;
-    let child_y = y + title_bar_height;
+    let child_y = (parent_height_logical as i32) - y - (height as i32);
 
     // Get the embedded viewport from managed state and update bounds
     if let Some(viewport_state) = app.try_state::<EmbeddedViewportState<R>>() {

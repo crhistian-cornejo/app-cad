@@ -104,41 +104,37 @@ impl<R: Runtime> EmbeddedViewport<R> {
         // Get the raw Window from WebviewWindow for parent relationship
         let parent_window = main_window.as_ref().window();
 
-        // With parent() on macOS, the child window positions are relative to the parent.
-        // The x,y from frontend are CSS (logical) pixels relative to the webview content area.
-        // 
-        // On macOS with parent windows, we need to account for the title bar offset.
-        // The webview content starts below the title bar, so we need to add the title bar height.
-        // 
-        // outer_position = window position on screen
-        // inner_position = content area position on screen (after title bar)
-        // The difference gives us the title bar height
-        
+        // With parent() on macOS, the child window positions are relative to the parent window's
+        // content area (the area below the title bar).
+        //
+        // The frontend sends CSS (logical) pixel coordinates relative to the webview's viewport,
+        // which corresponds directly to the parent window's content area when using
+        // titleBarStyle: "Overlay" with hiddenTitle: true.
+        //
+        // IMPORTANT: macOS uses a flipped coordinate system where Y increases upward from the
+        // bottom of the parent window. We need to convert from top-down to bottom-up coordinates.
+
         let scale_factor = main_window
             .scale_factor()
             .map_err(|e| format!("Failed to get scale factor: {}", e))?;
-        
-        // Get title bar offset by comparing outer and inner positions
-        let outer_pos = main_window
-            .outer_position()
-            .map_err(|e| format!("Failed to get outer position: {}", e))?;
-        let inner_pos = main_window
-            .inner_position()
-            .map_err(|e| format!("Failed to get inner position: {}", e))?;
-        
-        // Title bar height in physical pixels
-        let title_bar_height_physical = inner_pos.y - outer_pos.y;
-        // Convert to logical pixels
-        let title_bar_height = (title_bar_height_physical as f64 / scale_factor) as i32;
-        
-        // For child windows with parent(), position is relative to parent's content area
-        // We just use the CSS coordinates directly, adjusted for the title bar
+
+        // Get parent window's inner size for coordinate conversion
+        let inner_size = main_window
+            .inner_size()
+            .map_err(|e| format!("Failed to get inner size: {}", e))?;
+
+        // Convert from logical to physical pixels for inner size
+        let parent_height_logical = inner_size.height as f64 / scale_factor;
+
+        // macOS child windows with parent() use bottom-left origin
+        // Convert from top-down (CSS) to bottom-up (macOS) coordinates
         let child_x = x;
-        let child_y = y + title_bar_height;
+        // For macOS: y_macos = parent_height - (y_css + child_height)
+        let child_y = (parent_height_logical as i32) - y - (height as i32);
 
         tracing::info!(
-            "Child window position: ({}, {}) - title_bar_height: {} - scale: {}",
-            child_x, child_y, title_bar_height, scale_factor
+            "Child window positioning - frontend: ({}, {}) -> macOS: ({}, {}) - parent_height: {} - scale: {}",
+            x, y, child_x, child_y, parent_height_logical, scale_factor
         );
 
         // Create a child window (raw Window, not WebviewWindow)
@@ -193,14 +189,44 @@ impl<R: Runtime> EmbeddedViewport<R> {
 
         // Create wgpu viewport on THIS thread (must be main thread on macOS)
         tracing::info!("Creating NativeViewport on main thread...");
+        tracing::info!("  Window label: viewport-native");
+        tracing::info!("  Requested size: {}x{}", width, height);
+
+        // Verify window handle is valid before proceeding
+        use raw_window_handle::HasWindowHandle;
+        match self.window.window_handle() {
+            Ok(handle) => {
+                tracing::info!("  Window handle acquired successfully");
+                tracing::info!("  Handle type: {:?}", handle.as_raw());
+            }
+            Err(e) => {
+                tracing::error!("  Failed to get window handle: {:?}", e);
+                return Err(format!("Window handle error: {:?}", e));
+            }
+        }
+
+        // On macOS, give the Metal layer time to initialize
+        #[cfg(target_os = "macos")]
+        {
+            tracing::info!("  macOS detected - waiting 50ms for Metal layer initialization...");
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
 
         let window_arc = Arc::new(self.window.clone());
+        tracing::info!("  Creating wgpu surface and device...");
+
         let viewport = pollster::block_on(async {
             NativeViewport::new(window_arc, width, height).await
         })
-        .map_err(|e| format!("Failed to create NativeViewport: {:?}", e))?;
+        .map_err(|e| {
+            tracing::error!("  NativeViewport creation failed: {:?}", e);
+            format!("Failed to create NativeViewport: {:?}", e)
+        })?;
 
-        tracing::info!("NativeViewport created, starting render thread...");
+        tracing::info!("NativeViewport created successfully!");
+        tracing::info!("  Surface format: {:?}", viewport.surface_format());
+        tracing::info!("  Actual size: {}x{}", viewport.size().0, viewport.size().1);
+        tracing::info!("Starting render thread...");
 
         // Wrap viewport for thread transfer
         let viewport = Arc::new(Mutex::new(Some(viewport)));

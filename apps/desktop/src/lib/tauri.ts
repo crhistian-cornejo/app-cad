@@ -99,3 +99,83 @@ export const projectApi = {
 
   canRedo: () => invoke<boolean>("plugin:cadhy-bridge|project_can_redo"),
 }
+
+// ============================================================================
+// OVERLAY MODE API (Inverted Architecture)
+// ============================================================================
+
+export interface ViewportBounds {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface OverlayLayout {
+  titlebar_height?: number
+  left_panel_width?: number
+  right_panel_width?: number
+  statusbar_height?: number
+  left_collapsed?: boolean
+  right_collapsed?: boolean
+}
+
+/**
+ * Overlay Mode API for the "inverted" architecture where:
+ * - Main window = wgpu surface (receives native mouse events)
+ * - Child webviews = UI regions only (titlebar, panels, status bar)
+ *
+ * This provides 100+ FPS rendering with native viewport interaction.
+ */
+export const overlayApi = {
+  /** Initialize overlay mode viewport on the main window */
+  init: (width: number, height: number) =>
+    invoke<boolean>("plugin:cadhy-bridge|overlay_init", { width, height }),
+
+  /** Check if overlay mode is active */
+  isActive: () => invoke<boolean>("plugin:cadhy-bridge|overlay_is_active"),
+
+  /** Get current viewport bounds (area not covered by UI overlays) */
+  getViewportBounds: () =>
+    invoke<ViewportBounds>("plugin:cadhy-bridge|overlay_get_viewport_bounds"),
+
+  /** Update layout configuration */
+  setLayout: (layout: OverlayLayout) =>
+    invoke<ViewportBounds>("plugin:cadhy-bridge|overlay_set_layout", layout),
+
+  /** Toggle left panel visibility */
+  toggleLeftPanel: () =>
+    invoke<ViewportBounds>("plugin:cadhy-bridge|overlay_toggle_left_panel"),
+
+  /** Toggle right panel visibility */
+  toggleRightPanel: () =>
+    invoke<ViewportBounds>("plugin:cadhy-bridge|overlay_toggle_right_panel"),
+
+  /** Handle window resize - call when window size changes */
+  onResize: (width: number, height: number) =>
+    invoke<ViewportBounds>("plugin:cadhy-bridge|overlay_on_resize", { width, height }),
+
+  // Camera controls
+  cameraOrbit: (deltaX: number, deltaY: number) =>
+    invoke<void>("plugin:cadhy-bridge|overlay_camera_orbit", { delta_x: deltaX, delta_y: deltaY }),
+
+  cameraPan: (deltaX: number, deltaY: number) =>
+    invoke<void>("plugin:cadhy-bridge|overlay_camera_pan", { delta_x: deltaX, delta_y: deltaY }),
+
+  cameraZoom: (delta: number) =>
+    invoke<void>("plugin:cadhy-bridge|overlay_camera_zoom", { delta }),
+
+  cameraReset: () => invoke<void>("plugin:cadhy-bridge|overlay_camera_reset"),
+}
+
+// Helper to detect which UI region this webview represents (in overlay mode)
+export type UiRegion = "titlebar" | "left-panel" | "right-panel" | "statusbar" | "main"
+
+export function getCurrentUiRegion(): UiRegion {
+  const params = new URLSearchParams(window.location.search)
+  const region = params.get("region")
+  if (region === "titlebar" || region === "left-panel" || region === "right-panel" || region === "statusbar") {
+    return region
+  }
+  return "main"
+}

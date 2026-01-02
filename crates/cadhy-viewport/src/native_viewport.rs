@@ -60,18 +60,44 @@ impl NativeViewport {
     where
         W: HasWindowHandle + HasDisplayHandle + Send + Sync + 'static,
     {
+        tracing::info!("[NativeViewport::new] Starting initialization...");
+        tracing::info!("[NativeViewport::new] Requested size: {}x{}", width, height);
+
+        // Verify window handles before proceeding
+        let window_handle = window.window_handle()
+            .map_err(|e| {
+                tracing::error!("[NativeViewport::new] Failed to get window handle: {:?}", e);
+                ViewportError::SurfaceConfig(format!("Window handle error: {:?}", e))
+            })?;
+        tracing::info!("[NativeViewport::new] Window handle: {:?}", window_handle.as_raw());
+
+        let display_handle = window.display_handle()
+            .map_err(|e| {
+                tracing::error!("[NativeViewport::new] Failed to get display handle: {:?}", e);
+                ViewportError::SurfaceConfig(format!("Display handle error: {:?}", e))
+            })?;
+        tracing::info!("[NativeViewport::new] Display handle: {:?}", display_handle.as_raw());
+
         // Create wgpu instance with best available backend
+        tracing::info!("[NativeViewport::new] Creating wgpu instance...");
         let instance = Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             ..Default::default()
         });
+        tracing::info!("[NativeViewport::new] wgpu instance created");
 
         // Create surface from window handle
+        tracing::info!("[NativeViewport::new] Creating surface from window...");
         let surface = instance
             .create_surface(window)
-            .map_err(|e| ViewportError::SurfaceConfig(e.to_string()))?;
+            .map_err(|e| {
+                tracing::error!("[NativeViewport::new] Surface creation failed: {}", e);
+                ViewportError::SurfaceConfig(e.to_string())
+            })?;
+        tracing::info!("[NativeViewport::new] Surface created successfully");
 
         // Request high-performance GPU adapter
+        tracing::info!("[NativeViewport::new] Requesting GPU adapter...");
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
@@ -79,17 +105,21 @@ impl NativeViewport {
                 force_fallback_adapter: false,
             })
             .await
-            .ok_or(ViewportError::AdapterCreation)?;
+            .ok_or_else(|| {
+                tracing::error!("[NativeViewport::new] No compatible GPU adapter found!");
+                ViewportError::AdapterCreation
+            })?;
 
         // Log adapter info
         let info = adapter.get_info();
         tracing::info!(
-            "GPU: {} ({:?})",
+            "[NativeViewport::new] GPU adapter acquired: {} ({:?})",
             info.name,
             info.backend
         );
 
         // Request device with features for wireframe rendering
+        tracing::info!("[NativeViewport::new] Requesting device with POLYGON_MODE_LINE feature...");
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
@@ -101,24 +131,35 @@ impl NativeViewport {
                 None,
             )
             .await?;
+        tracing::info!("[NativeViewport::new] Device and queue created");
 
         // Configure surface for optimal performance
+        tracing::info!("[NativeViewport::new] Getting surface capabilities...");
         let surface_caps = surface.get_capabilities(&adapter);
+        tracing::info!("[NativeViewport::new] Available formats: {:?}", surface_caps.formats);
+        tracing::info!("[NativeViewport::new] Available present modes: {:?}", surface_caps.present_modes);
+        tracing::info!("[NativeViewport::new] Available alpha modes: {:?}", surface_caps.alpha_modes);
+
         let surface_format = surface_caps
             .formats
             .iter()
             .find(|f| f.is_srgb())
             .copied()
             .unwrap_or(surface_caps.formats[0]);
+        tracing::info!("[NativeViewport::new] Selected format: {:?}", surface_format);
 
-        // Use AutoVsync for smooth 60 FPS with minimal latency
-        let present_mode = if surface_caps.present_modes.contains(&wgpu::PresentMode::AutoVsync) {
+        // Use Immediate for maximum FPS (100+), fall back to Fifo for VSync
+        // Priority: Immediate > Mailbox > AutoVsync > Fifo
+        let present_mode = if surface_caps.present_modes.contains(&wgpu::PresentMode::Immediate) {
+            wgpu::PresentMode::Immediate  // Uncapped FPS, no tearing on modern displays
+        } else if surface_caps.present_modes.contains(&wgpu::PresentMode::Mailbox) {
+            wgpu::PresentMode::Mailbox    // Uncapped FPS with frame buffering
+        } else if surface_caps.present_modes.contains(&wgpu::PresentMode::AutoVsync) {
             wgpu::PresentMode::AutoVsync
-        } else if surface_caps.present_modes.contains(&wgpu::PresentMode::Fifo) {
-            wgpu::PresentMode::Fifo
         } else {
-            surface_caps.present_modes[0]
+            wgpu::PresentMode::Fifo       // VSync fallback
         };
+        tracing::info!("[NativeViewport::new] Selected present mode: {:?}", present_mode);
 
         let config = SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -128,19 +169,25 @@ impl NativeViewport {
             present_mode,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
             view_formats: vec![],
-            desired_maximum_frame_latency: 2,
+            desired_maximum_frame_latency: 1,  // Minimum latency for responsive input
         };
+
+        tracing::info!("[NativeViewport::new] Configuring surface...");
         surface.configure(&device, &config);
+        tracing::info!("[NativeViewport::new] Surface configured successfully");
 
         // Create depth buffer
+        tracing::info!("[NativeViewport::new] Creating depth texture...");
         let (depth_texture, depth_view) = Self::create_depth_texture(&device, width, height);
 
         // Create render context with all pipelines
+        tracing::info!("[NativeViewport::new] Creating render context with pipelines...");
         let render_context = RenderContext::new(&device, surface_format);
 
         let device = Arc::new(device);
         let queue = Arc::new(queue);
 
+        tracing::info!("[NativeViewport::new] Initialization complete!");
         Ok(Self {
             device,
             queue,

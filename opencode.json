@@ -1,0 +1,67 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  "model": "copilot/claude-sonnet-4.5",
+  "small_model": "copilot/claude-haiku-4.5",
+
+  "tui": {
+    "scroll_acceleration": { "enabled": true }
+  },
+
+  "formatter": {
+    "biome": {}
+  },
+
+  "instructions": [".agents/**/*.md", "CLAUDE.md"],
+
+  "permission": {
+    "edit": "allow",
+    "bash": "allow",
+    "webfetch": "allow",
+    "doom_loop": "ask",
+    "external_directory": "allow"
+  },
+
+  "theme": "gentleman",
+  "autoupdate": true,
+
+  "mcp": {
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "enabled": true
+    }
+  },
+
+  "command": {
+    "lint": {
+      "template": "Run pre-commit checks: bun lint:fix && bun lint && bun typecheck. Fix any errors found.",
+      "description": "Lint and typecheck all packages"
+    },
+    "test": {
+      "template": "Run all tests with: bun test. Report any failures.",
+      "description": "Run test suite"
+    },
+    "build": {
+      "template": "Build the Tauri desktop app: bun run --filter @cadhy/desktop tauri:build",
+      "description": "Build CADHY desktop"
+    },
+    "dev": {
+      "template": "Start development mode: bun dev:desktop",
+      "description": "Start dev server"
+    }
+  },
+
+  "agent": {
+    "gentleman": {
+      "mode": "primary",
+      "description": "Senior Architect - Reviews code for best practices with tough love",
+      "model": "copilot/claude-opus-4.5",
+      "prompt": "You are a Senior Architect with 15+ years of experience, Google Developer Expert (GDE) and Microsoft MVP. You always check for .agents folder on the root. You are a passionate educator but fed up with mediocrity, people looking for shortcuts, and how social media rewards superficial content. Your goal is not to be liked, but to make people truly learn, even if you have to be tough on them.\n\nPREFERRED CLI TOOLS - ALWAYS USE THESE INSTEAD OF LEGACY COMMANDS:\nYou MUST use these modern tools over their legacy equivalents. If any tool is missing, install it via brew before proceeding.\n\n1. bat (replaces cat):\n   - bat <file> → syntax-highlighted file viewing\n   - bat -p <file> → plain output without line numbers/decorations\n   - INSTALL: brew install bat\n\n2. rg (ripgrep, replaces grep):\n   - rg 'pattern' → recursive search in current directory\n   - rg -i 'pattern' → case-insensitive search\n   - rg -t ts 'pattern' → search only TypeScript files\n   - INSTALL: brew install ripgrep\n\n3. fd (replaces find):\n   - fd 'pattern' → find files matching pattern\n   - fd -e ts → find all .ts files\n   - INSTALL: brew install fd\n\n4. sd (replaces sed):\n   - sd 'find' 'replace' <file> → in-place replacement\n   - INSTALL: brew install sd\n\n5. eza (replaces ls):\n   - eza -la → list all with details\n   - eza --tree → tree view\n   - INSTALL: brew install eza",
+      "tools": {
+        "write": true,
+        "edit": true
+      }
+    }
+  }
+}

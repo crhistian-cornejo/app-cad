@@ -39,15 +39,19 @@ mod dto;
 mod error;
 mod state;
 
+pub mod cmd_overlay;
 pub mod cmd_project;
 pub mod cmd_scene;
 pub mod cmd_viewport;
 pub mod embedded_viewport;
+pub mod ui_overlay;
 
+pub use cmd_overlay::OverlayViewportState;
 pub use dto::*;
 pub use embedded_viewport::{EmbeddedViewport, FpsStats, RenderMessage, RenderSender};
 pub use error::{BridgeError, BridgeResult};
 pub use state::AppState;
+pub use ui_overlay::{OverlayLayout, UiOverlay, ViewportBounds};
 
 use tauri::Manager;
 
@@ -101,10 +105,24 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
             cmd_scene::scene_get_selection,
             cmd_scene::scene_set_transform,
             cmd_scene::scene_get_transform,
+            // Overlay mode commands (inverted architecture: wgpu main + webview children)
+            cmd_overlay::overlay_init,
+            cmd_overlay::overlay_get_viewport_bounds,
+            cmd_overlay::overlay_set_layout,
+            cmd_overlay::overlay_toggle_left_panel,
+            cmd_overlay::overlay_toggle_right_panel,
+            cmd_overlay::overlay_on_resize,
+            cmd_overlay::overlay_is_active,
+            cmd_overlay::overlay_camera_orbit,
+            cmd_overlay::overlay_camera_pan,
+            cmd_overlay::overlay_camera_zoom,
+            cmd_overlay::overlay_camera_reset,
         ])
         .setup(|app, _api| {
             // Initialize app state
             app.manage(AppState::new());
+            // Initialize overlay viewport state (for inverted architecture mode)
+            app.manage(OverlayViewportState::new());
             Ok(())
         })
         .build()

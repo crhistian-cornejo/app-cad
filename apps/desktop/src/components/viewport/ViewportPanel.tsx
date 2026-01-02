@@ -571,32 +571,32 @@ function BottomToolbar({ onOpenCommandPalette }: { onOpenCommandPalette: () => v
 // ============================================================================
 
 export function ViewportPanel() {
-  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
+  // const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
 
-  // Handle keyboard shortcut for command palette
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd+K or Ctrl+K to open command palette
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault()
-        setCommandPaletteOpen(true)
-      }
-      // Escape to close
-      if (e.key === "Escape") {
-        setCommandPaletteOpen(false)
-      }
-    }
+  // Handle keyboard shortcut for command palette - DISABLED
+  // useEffect(() => {
+  //   const handleKeyDown = (e: KeyboardEvent) => {
+  //     // Cmd+K or Ctrl+K to open command palette
+  //     if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+  //       e.preventDefault()
+  //       setCommandPaletteOpen(true)
+  //     }
+  //     // Escape to close
+  //     if (e.key === "Escape") {
+  //       setCommandPaletteOpen(false)
+  //     }
+  //   }
 
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [])
+  //   window.addEventListener("keydown", handleKeyDown)
+  //   return () => window.removeEventListener("keydown", handleKeyDown)
+  // }, [])
 
   return (
     <div className="relative h-full w-full overflow-hidden">
       <ViewportCanvas />
       <ViewportToolbar />
-      <BottomToolbar onOpenCommandPalette={() => setCommandPaletteOpen(true)} />
-      <CommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
+      <BottomToolbar onOpenCommandPalette={() => {}} />
+      {/* <CommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} /> */}
     </div>
   )
 }
