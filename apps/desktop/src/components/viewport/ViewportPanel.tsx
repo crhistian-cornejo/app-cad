@@ -14,7 +14,7 @@ import {
   Search01Icon,
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Button, Kbd, Tooltip, TooltipContent, TooltipTrigger } from "@cadhy/ui"
+import { Button, Kbd, Slider, Tooltip, TooltipContent, TooltipTrigger } from "@cadhy/ui"
 import { useViewportStore } from "@/stores/viewport-store"
 import { sceneApiDirect, wgpuOverlayApi } from "@/lib/tauri"
 
@@ -166,12 +166,13 @@ function ViewportCanvas() {
 
   // Camera control handlers
   const handlePointerDown = useCallback((e: PointerEvent<HTMLDivElement>) => {
-    // Alt+Click or Middle mouse button for camera control
-    if (e.button === 1 || (e.button === 0 && e.altKey)) {
+    // Left click = orbit, Middle click = pan, Shift+Left = pan
+    if (e.button === 0 || e.button === 1) {
       e.preventDefault()
       isDragging.current = true
       lastMousePos.current = { x: e.clientX, y: e.clientY }
-      dragMode.current = e.shiftKey ? "pan" : "orbit"
+      // Middle mouse or Shift+Left = pan, otherwise orbit
+      dragMode.current = e.button === 1 || e.shiftKey ? "pan" : "orbit"
       console.log(
         `[Viewport] Drag started: mode=${dragMode.current}, pos=(${e.clientX}, ${e.clientY})`,
       )
@@ -188,10 +189,11 @@ function ViewportCanvas() {
 
       try {
         // Use wgpuOverlayApi for inverted architecture
+        // Pass raw pixel deltas - sensitivity is handled in Rust
         if (dragMode.current === "orbit") {
-          wgpuOverlayApi.orbit(deltaX * 0.01, deltaY * 0.01)
+          wgpuOverlayApi.orbit(deltaX, deltaY)
         } else {
-          wgpuOverlayApi.pan(deltaX * 0.01, deltaY * 0.01)
+          wgpuOverlayApi.pan(deltaX, deltaY)
         }
       } catch (error) {
         console.error("[Viewport] Camera control error:", error)
@@ -216,7 +218,8 @@ function ViewportCanvas() {
       e.preventDefault()
 
       try {
-        wgpuOverlayApi.zoom(e.deltaY * -0.001)
+        // Pass raw delta - sensitivity handled in Rust
+        wgpuOverlayApi.zoom(-e.deltaY)
       } catch (error) {
         console.error("[Viewport] Zoom error:", error)
       }
@@ -388,15 +391,13 @@ function BottomToolbar({ onOpenCommandPalette }: { onOpenCommandPalette: () => v
             <span className="text-[10px] text-muted-foreground uppercase tracking-wider whitespace-nowrap">
               Light Intensity
             </span>
-            <div className="relative w-20 flex items-center">
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-                value={lightIntensity}
-                onChange={(e) => setLightIntensity(Number(e.target.value))}
-                className="w-full h-1 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
+            <div className="w-24">
+              <Slider
+                value={[lightIntensity]}
+                min={0}
+                max={100}
+                step={1}
+                onValueChange={(val) => setLightIntensity(val[0])}
               />
             </div>
             <span className="text-[10px] text-muted-foreground font-medium w-6 text-right">
@@ -412,18 +413,16 @@ function BottomToolbar({ onOpenCommandPalette }: { onOpenCommandPalette: () => v
             <span className="text-[10px] text-muted-foreground uppercase tracking-wider whitespace-nowrap">
               Light Angle
             </span>
-            <div className="relative w-20 flex items-center">
-              <input
-                type="range"
-                min="-180"
-                max="180"
-                step="5"
-                value={lightAngle}
-                onChange={(e) => setLightAngle(Number(e.target.value))}
-                className="w-full h-1 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
+            <div className="w-24">
+              <Slider
+                value={[lightAngle]}
+                min={-180}
+                max={180}
+                step={5}
+                onValueChange={(val) => setLightAngle(val[0])}
               />
             </div>
-            <span className="text-[10px] text-muted-foreground font-medium w-6 text-right">
+            <span className="text-[10px] text-muted-foreground font-medium w-8 text-right">
               {lightAngle}°
             </span>
           </div>

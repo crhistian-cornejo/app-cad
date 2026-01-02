@@ -294,8 +294,10 @@ pub fn run() {
                                     ViewportMessage::Zoom { delta } => {
                                         let direction = (camera.target - camera.position).normalize();
                                         let distance = (camera.position - camera.target).length();
-                                        let zoom_speed = distance * 0.001;
-                                        let new_distance = (distance - delta * zoom_speed).max(0.5);
+                                        // Zoom speed proportional to distance for consistent feel
+                                        // Scroll deltaY is ~100 per tick, so use small multiplier
+                                        let zoom_speed = distance * 0.002;
+                                        let new_distance = (distance - delta * zoom_speed).clamp(0.5, 100.0);
                                         camera.position = camera.target - direction * new_distance;
                                     }
                                     ViewportMessage::ResetCamera => {

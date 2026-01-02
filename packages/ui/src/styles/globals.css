@@ -97,41 +97,42 @@
 
 :root {
   /* Light theme using Tailwind neutral palette */
-  --background: #fafafa; /* neutral-50 - Base background */
-  --foreground: #171717; /* neutral-900 - Main text */
-  --card: #ffffff; /* white - Card surfaces */
-  --card-foreground: #171717; /* neutral-900 */
-  --popover: #ffffff; /* white - Popover bg */
-  --popover-foreground: #171717; /* neutral-900 */
-  --primary: oklch(0.488 0.243 264.376); /* Violet accent */
-  --primary-foreground: #fafafa; /* neutral-50 */
-  --secondary: #f5f5f5; /* neutral-100 - Secondary surfaces */
-  --secondary-foreground: #171717; /* neutral-900 */
-  --muted: #f5f5f5; /* neutral-100 - Muted backgrounds */
-  --muted-foreground: #737373; /* neutral-500 - Muted text */
-  --accent: #e5e5e5; /* neutral-200 - Accent/hover surfaces */
-  --accent-foreground: #171717; /* neutral-900 */
-  --destructive: #ef4444; /* red-500 */
-  --border: #e5e5e5; /* neutral-200 - Borders */
-  --input: #f5f5f5; /* neutral-100 - Input backgrounds */
-  --ring: #a3a3a3; /* neutral-400 */
+  --background: #fdfdfd; /* White - Base background */
+  --foreground: #1a1a1a; /* neutral-900 - Main text */
+  --card: #f2f2f2; /* neutral-100 - Card surfaces (slightly grayer) */
+  --card-foreground: #1a1a1a;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+  --primary: oklch(0.488 0.243 264.376);
+  --primary-foreground: #fafafa;
+  --secondary: #ebebeb; /* neutral-200 - Secondary surfaces */
+  --secondary-foreground: #1a1a1a;
+  --muted: #ebebeb; /* neutral-200 - Muted backgrounds */
+  --muted-foreground: #666666; /* neutral-500 */
+  --accent: #e0e0e0; /* neutral-300 - Accent/hover surfaces */
+  --accent-foreground: #1a1a1a;
+  --destructive: #ef4444;
+  --border: #dcdcdc; /* neutral-300 - Borders (darker for definition) */
+  --input: #f2f2f2;
+  --ring: #a3a3a3;
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
   --chart-3: oklch(0.546 0.245 262.881);
   --chart-4: oklch(0.488 0.243 264.376);
   --chart-5: oklch(0.424 0.199 265.638);
-  --radius: 1rem;
-  --sidebar: #fafafa; /* neutral-50 - Sidebar bg */
-  --sidebar-foreground: #171717; /* neutral-900 */
+  --radius: 0.5rem;
+  --sidebar: #f2f2f2; /* neutral-100 - Sidebar matches card (grayer) */
+  --sidebar-foreground: #1a1a1a;
   --sidebar-primary: oklch(0.546 0.245 262.881);
-  --sidebar-primary-foreground: #fafafa; /* neutral-50 */
-  --sidebar-accent: #e5e5e5; /* neutral-200 */
-  --sidebar-accent-foreground: #171717; /* neutral-900 */
-  --sidebar-border: #e5e5e5; /* neutral-200 */
-  --sidebar-ring: #a3a3a3; /* neutral-400 */
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #e0e0e0;
+  --sidebar-accent-foreground: #1a1a1a;
+  --sidebar-border: #dcdcdc;
+  --sidebar-ring: #a3a3a3;
   /* Tooltip colors - consistent with theme surfaces */
-  --tooltip: #ffffff; /* white - Light tooltip bg */
-  --tooltip-foreground: #171717; /* neutral-900 - Dark tooltip text */
+  --tooltip: #ffffff;
+  --tooltip-foreground: #1a1a1a;
+  --tooltip-border: #dcdcdc; /* Added for better definition */
 
   /* Semantic status colors */
   --status-success: oklch(0.65 0.18 145); /* green */
@@ -199,6 +200,7 @@
   /* Tooltip colors - Cursor/VSCode style */
   --tooltip: #3e3e42; /* Cursor/VSCode tooltip background */
   --tooltip-foreground: #d4d4d4; /* Cursor/VSCode tooltip text */
+  --tooltip-border: #454545;
 
   /* Semantic status colors - Dark mode (slightly brighter) */
   --status-success: oklch(0.7 0.18 145);
@@ -233,6 +235,7 @@
   --color-toolbar-bg: var(--toolbar-bg);
   --color-tooltip: var(--tooltip);
   --color-tooltip-foreground: var(--tooltip-foreground);
+  --color-tooltip-border: var(--tooltip-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
