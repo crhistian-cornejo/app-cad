@@ -20,7 +20,7 @@
 //! ```
 
 use std::sync::{Arc, Mutex, RwLock};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -39,6 +39,8 @@ pub struct WgpuViewportState {
     pub running: Arc<AtomicBool>,
     pub scene: Arc<RwLock<Scene>>,
     pub sender: Mutex<Option<Sender<ViewportMessage>>>,
+    pub fps: Arc<AtomicU32>,
+    pub frame_time_us: Arc<AtomicU32>,
 }
 
 impl WgpuViewportState {
@@ -47,6 +49,8 @@ impl WgpuViewportState {
             running: Arc::new(AtomicBool::new(false)),
             scene: Arc::new(RwLock::new(Scene::new())),
             sender: Mutex::new(None),
+            fps: Arc::new(AtomicU32::new(0)),
+            frame_time_us: Arc::new(AtomicU32::new(0)),
         }
     }
 
@@ -82,6 +86,7 @@ fn viewport_orbit(
     delta_x: f32,
     delta_y: f32,
 ) -> Result<(), String> {
+    println!("[CADHY] Orbit command: dx={}, dy={}", delta_x, delta_y);
     state.send(ViewportMessage::Orbit { delta_x, delta_y })
 }
 
@@ -119,6 +124,18 @@ fn viewport_set_view_mode(
         _ => ViewMode::Solid,
     };
     state.send(ViewportMessage::SetViewMode(view_mode))
+}
+
+#[tauri::command]
+fn viewport_get_fps(
+    state: tauri::State<Arc<WgpuViewportState>>,
+) -> Result<serde_json::Value, String> {
+    let fps = state.fps.load(Ordering::Relaxed);
+    let frame_time_us = state.frame_time_us.load(Ordering::Relaxed);
+    Ok(serde_json::json!({
+        "fps": fps,
+        "frame_time_ms": frame_time_us as f64 / 1000.0
+    }))
 }
 
 #[tauri::command]
@@ -162,6 +179,7 @@ pub fn run() {
             viewport_zoom,
             viewport_reset_camera,
             viewport_set_view_mode,
+            viewport_get_fps,
             scene_add_cube,
         ])
         .setup(move |app| {
@@ -228,6 +246,8 @@ pub fn run() {
                     let viewport_for_thread = viewport.clone();
                     let scene = Arc::clone(&state.scene);
                     let running = Arc::clone(&state.running);
+                    let fps_counter = Arc::clone(&state.fps);
+                    let frame_time_counter = Arc::clone(&state.frame_time_us);
 
                     running.store(true, Ordering::SeqCst);
 
@@ -252,11 +272,13 @@ pub fn run() {
                         };
 
                         let mut frame_count = 0u64;
-                        let mut last_fps_log = Instant::now();
+                        let mut last_fps_update = Instant::now();
+                        let mut frame_start: Instant;
 
                         println!("[CADHY] Render thread started");
 
                         while running.load(Ordering::SeqCst) {
+                            frame_start = Instant::now();
                             // Process messages
                             while let Ok(msg) = rx.try_recv() {
                                 match msg {
@@ -267,7 +289,8 @@ pub fn run() {
                                         }
                                     }
                                     ViewportMessage::Orbit { delta_x, delta_y } => {
-                                        let sensitivity = 0.005;
+                                        // Higher sensitivity for pixel-based input
+                                        let sensitivity = 0.01;
                                         let offset = camera.position - camera.target;
                                         let distance = offset.length();
                                         let mut theta = offset.z.atan2(offset.x);
@@ -334,15 +357,21 @@ pub fn run() {
                                 }
                             }
 
-                            // FPS logging
+                            // Update frame time (in microseconds)
+                            let frame_time = frame_start.elapsed();
+                            frame_time_counter.store(frame_time.as_micros() as u32, Ordering::Relaxed);
+
+                            // FPS calculation - update every second for smooth display
                             frame_count += 1;
-                            if last_fps_log.elapsed() >= Duration::from_secs(5) {
-                                let fps = frame_count as f64 / last_fps_log.elapsed().as_secs_f64();
-                                println!("[CADHY] FPS: {:.1}", fps);
+                            let elapsed = last_fps_update.elapsed();
+                            if elapsed >= Duration::from_secs(1) {
+                                let fps = (frame_count as f64 / elapsed.as_secs_f64()) as u32;
+                                fps_counter.store(fps, Ordering::Relaxed);
                                 frame_count = 0;
-                                last_fps_log = Instant::now();
+                                last_fps_update = Instant::now();
                             }
 
+                            // Small sleep to prevent 100% CPU usage while still allowing high FPS
                             thread::sleep(Duration::from_micros(100));
                         }
 

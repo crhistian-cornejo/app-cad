@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import { viewportApi } from "@/lib/tauri"
+import { viewportApi, wgpuOverlayApi } from "@/lib/tauri"
 
 type ViewMode = "solid" | "wireframe"
 
@@ -23,9 +23,10 @@ interface ViewportActions {
   setObjectCount: (count: number) => void
   frameAll: () => void
   resetCamera: () => void
+  startFpsPolling: () => () => void
 }
 
-export const useViewportStore = create<ViewportState & ViewportActions>((set) => ({
+export const useViewportStore = create<ViewportState & ViewportActions>((set, get) => ({
   width: 800,
   height: 600,
   viewMode: "solid",
@@ -52,9 +53,28 @@ export const useViewportStore = create<ViewportState & ViewportActions>((set) =>
 
   resetCamera: async () => {
     try {
-      await viewportApi.frameAll() // Use frameAll as resetCamera
+      await wgpuOverlayApi.resetCamera()
     } catch (e) {
       console.error("Reset camera failed:", e)
     }
+  },
+
+  // Start polling FPS from wgpu backend
+  startFpsPolling: () => {
+    const fetchFps = async () => {
+      try {
+        const { fps, frame_time_ms } = await wgpuOverlayApi.getFps()
+        set({ fps, frameTime: frame_time_ms })
+      } catch (e) {
+        // Silently ignore - wgpu might not be ready yet
+      }
+    }
+
+    // Poll every 500ms for smooth updates
+    const intervalId = setInterval(fetchFps, 500)
+    fetchFps() // Initial fetch
+
+    // Return cleanup function
+    return () => clearInterval(intervalId)
   },
 }))

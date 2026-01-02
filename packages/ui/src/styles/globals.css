@@ -120,7 +120,7 @@
   --chart-3: oklch(0.546 0.245 262.881);
   --chart-4: oklch(0.488 0.243 264.376);
   --chart-5: oklch(0.424 0.199 265.638);
-  --radius: 0.5rem;
+  --radius: 0.75rem;
   --sidebar: #f2f2f2; /* neutral-100 - Sidebar matches card (grayer) */
   --sidebar-foreground: #1a1a1a;
   --sidebar-primary: oklch(0.546 0.245 262.881);

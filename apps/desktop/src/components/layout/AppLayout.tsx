@@ -312,7 +312,13 @@ function LogoDropdown({ onOpenSettings, isMacOS }: LogoDropdownProps) {
 // ============================================================================
 
 function StatusBar() {
-  const { width, height, cursorPosition, fps, frameTime, viewMode } = useViewportStore()
+  const { width, height, cursorPosition, fps, frameTime, viewMode, startFpsPolling } = useViewportStore()
+
+  // Start FPS polling when component mounts
+  useEffect(() => {
+    const stopPolling = startFpsPolling()
+    return stopPolling
+  }, [startFpsPolling])
 
   return (
     <footer className="h-6 flex items-center justify-between px-3 bg-background border-t border-border text-[11px] font-mono text-muted-foreground">

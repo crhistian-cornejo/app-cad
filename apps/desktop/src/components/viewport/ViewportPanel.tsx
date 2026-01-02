@@ -169,6 +169,7 @@ function ViewportCanvas() {
     // Left click = orbit, Middle click = pan, Shift+Left = pan
     if (e.button === 0 || e.button === 1) {
       e.preventDefault()
+      e.stopPropagation()
       isDragging.current = true
       lastMousePos.current = { x: e.clientX, y: e.clientY }
       // Middle mouse or Shift+Left = pan, otherwise orbit
@@ -176,24 +177,31 @@ function ViewportCanvas() {
       console.log(
         `[Viewport] Drag started: mode=${dragMode.current}, pos=(${e.clientX}, ${e.clientY})`,
       )
-      ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+      // Use containerRef for consistent pointer capture
+      containerRef.current?.setPointerCapture(e.pointerId)
     }
   }, [])
 
   const handlePointerMove = useCallback(
-    (e: PointerEvent<HTMLDivElement>) => {
+    async (e: PointerEvent<HTMLDivElement>) => {
       if (!isDragging.current || !isInitialized) return
+      e.stopPropagation()
 
       const deltaX = e.clientX - lastMousePos.current.x
       const deltaY = e.clientY - lastMousePos.current.y
+
+      // Skip if no movement
+      if (deltaX === 0 && deltaY === 0) return
 
       try {
         // Use wgpuOverlayApi for inverted architecture
         // Pass raw pixel deltas - sensitivity is handled in Rust
         if (dragMode.current === "orbit") {
-          wgpuOverlayApi.orbit(deltaX, deltaY)
+          console.log(`[Viewport] Orbit: dx=${deltaX}, dy=${deltaY}`)
+          await wgpuOverlayApi.orbit(deltaX, deltaY)
         } else {
-          wgpuOverlayApi.pan(deltaX, deltaY)
+          console.log(`[Viewport] Pan: dx=${deltaX}, dy=${deltaY}`)
+          await wgpuOverlayApi.pan(deltaX, deltaY)
         }
       } catch (error) {
         console.error("[Viewport] Camera control error:", error)
@@ -207,19 +215,19 @@ function ViewportCanvas() {
   const handlePointerUp = useCallback((e: PointerEvent<HTMLDivElement>) => {
     if (isDragging.current) {
       isDragging.current = false
-      ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
+      containerRef.current?.releasePointerCapture(e.pointerId)
       console.log("[Viewport] Drag ended")
     }
   }, [])
 
   const handleWheel = useCallback(
-    (e: WheelEvent<HTMLDivElement>) => {
+    async (e: WheelEvent<HTMLDivElement>) => {
       if (!isInitialized) return
       e.preventDefault()
 
       try {
         // Pass raw delta - sensitivity handled in Rust
-        wgpuOverlayApi.zoom(-e.deltaY)
+        await wgpuOverlayApi.zoom(-e.deltaY)
       } catch (error) {
         console.error("[Viewport] Zoom error:", error)
       }
@@ -265,9 +273,9 @@ function ViewportCanvas() {
           className="absolute -top-[1px] -left-[1px] fill-card"
           aria-hidden="true"
         >
-          <path d="M24 0 L0 0 L0 24 L1 24 L1 9 Q1 1 9 1 L24 1 Z" />
+          <path d="M24 0 L0 0 L0 24 L1 24 L1 13 Q1 1 13 1 L24 1 Z" />
           <path
-            d="M24 1 L9 1 Q1 1 1 9 L1 24"
+            d="M24 1 L13 1 Q1 1 1 13 L1 24"
             fill="none"
             stroke="currentColor"
             strokeWidth="1"
@@ -282,9 +290,9 @@ function ViewportCanvas() {
           className="absolute -top-[1px] -right-[1px] fill-card"
           aria-hidden="true"
         >
-          <path d="M0 0 L24 0 L24 24 L23 24 L23 9 Q23 1 15 1 L0 1 Z" />
+          <path d="M0 0 L24 0 L24 24 L23 24 L23 13 Q23 1 11 1 L0 1 Z" />
           <path
-            d="M0 1 L15 1 Q23 1 23 9 L23 24"
+            d="M0 1 L11 1 Q23 1 23 13 L23 24"
             fill="none"
             stroke="currentColor"
             strokeWidth="1"
@@ -299,9 +307,9 @@ function ViewportCanvas() {
           className="absolute -bottom-[1px] -left-[1px] fill-card"
           aria-hidden="true"
         >
-          <path d="M24 24 L0 24 L0 0 L1 0 L1 15 Q1 23 9 23 L24 23 Z" />
+          <path d="M24 24 L0 24 L0 0 L1 0 L1 11 Q1 23 11 23 L24 23 Z" />
           <path
-            d="M24 23 L9 23 Q1 23 1 15 L1 0"
+            d="M24 23 L11 23 Q1 23 1 11 L1 0"
             fill="none"
             stroke="currentColor"
             strokeWidth="1"
@@ -316,9 +324,9 @@ function ViewportCanvas() {
           className="absolute -bottom-[1px] -right-[1px] fill-card"
           aria-hidden="true"
         >
-          <path d="M0 24 L24 24 L24 0 L23 0 L23 15 Q23 23 15 23 L0 23 Z" />
+          <path d="M0 24 L24 24 L24 0 L23 0 L23 11 Q23 23 13 23 L0 23 Z" />
           <path
-            d="M0 23 L15 23 Q23 23 23 15 L23 0"
+            d="M0 23 L13 23 Q23 23 23 11 L23 0"
             fill="none"
             stroke="currentColor"
             strokeWidth="1"

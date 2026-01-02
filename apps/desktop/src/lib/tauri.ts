@@ -212,6 +212,9 @@ export const wgpuOverlayApi = {
   /** Set view mode (solid/wireframe) */
   setViewMode: (mode: "solid" | "wireframe") =>
     invoke<void>("viewport_set_view_mode", { mode }),
+
+  /** Get real-time FPS from wgpu render thread */
+  getFps: () => invoke<{ fps: number; frame_time_ms: number }>("viewport_get_fps"),
 }
 
 // Update sceneApi to use the new direct command
