@@ -15,9 +15,8 @@ import {
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Button, Kbd, Tooltip, TooltipContent, TooltipTrigger } from "@cadhy/ui"
-import { CommandPalette } from "@/components/pallete/CommandPalette"
 import { useViewportStore } from "@/stores/viewport-store"
-import { viewportApi, sceneApi } from "@/lib/tauri"
+import { sceneApiDirect, wgpuOverlayApi } from "@/lib/tauri"
 
 // ============================================================================
 // VIEWPORT TOOLBAR
@@ -31,7 +30,7 @@ function ViewportToolbar() {
     if (isAddingCube) return
     setIsAddingCube(true)
     try {
-      await sceneApi.addCube("Cube", 1.0)
+      await sceneApiDirect.addCube("Cube", 1.0)
     } catch (e) {
       console.error("Failed to add cube:", e)
     } finally {
@@ -41,7 +40,7 @@ function ViewportToolbar() {
 
   const handleSetViewMode = async (mode: "solid" | "wireframe") => {
     try {
-      await viewportApi.setViewMode(mode)
+      await wgpuOverlayApi.setViewMode(mode)
       setViewMode(mode)
     } catch (e) {
       console.error("Failed to set view mode:", e)
@@ -50,7 +49,7 @@ function ViewportToolbar() {
 
   const handleResetCamera = async () => {
     try {
-      await viewportApi.resetCamera()
+      await wgpuOverlayApi.resetCamera()
       resetCamera()
     } catch (e) {
       console.error("Failed to reset camera:", e)
@@ -145,118 +144,25 @@ function ViewportCanvas() {
 
   const [size, setSize] = useState({ width: 0, height: 0 })
 
-  // State to track rendering mode
-  const [nativeMode, setNativeMode] = useState(false)
-
-  // Initialize viewport
+  // In inverted architecture, wgpu is ALWAYS running (started in lib.rs)
+  // No initialization needed - mark as ready immediately
   useEffect(() => {
-    let mounted = true
-
-    const initializeViewport = async () => {
-      if (!containerRef.current) return
-
-      try {
-        const rect = containerRef.current.getBoundingClientRect()
-        const width = Math.floor(rect.width)
-        const height = Math.floor(rect.height)
-        const x = Math.floor(rect.left)
-        const y = Math.floor(rect.top)
-
-        console.log("[Viewport] Initializing with bounds:", { width, height, x, y })
-
-        // Try native viewport first
-        try {
-          await viewportApi.initNative(width, height, x, y)
-          if (mounted) {
-            setInitialized(true)
-            setNativeMode(true)
-            console.log("[Viewport] Native viewport initialized successfully")
-          }
-          return
-        } catch (nativeError) {
-          console.log("[Viewport] Native viewport failed, falling back to offscreen:", nativeError)
-        }
-
-        // Fallback to offscreen
-        await viewportApi.init(width, height)
-        if (mounted) {
-          setInitialized(true)
-          setNativeMode(false)
-          console.log("[Viewport] Offscreen viewport initialized successfully")
-        }
-      } catch (error) {
-        console.error("[Viewport] Initialization failed:", error)
-      }
-    }
-
-    initializeViewport()
-
-    return () => {
-      mounted = false
-    }
+    setInitialized(true)
+    console.log("[Viewport] Inverted architecture: wgpu renders behind, React UI on top")
   }, [setInitialized])
 
-  // Handle container resize
+  // Track window size for UI layout (wgpu resize is handled in Rust via WindowEvent)
   useEffect(() => {
-    if (!containerRef.current || !isInitialized) return
+    if (!isInitialized) return
 
-    const resizeObserver = new ResizeObserver((entries) => {
-      const entry = entries[0]
-      if (!entry) return
+    const handleResize = () => {
+      setSize({ width: window.innerWidth, height: window.innerHeight })
+    }
 
-      const { width, height } = entry.contentRect
-      setSize({ width: Math.floor(width), height: Math.floor(height) })
-
-      // Update viewport bounds
-      const updateBounds = async () => {
-        try {
-          await viewportApi.resize(Math.floor(width), Math.floor(height))
-        } catch (e) {
-          console.error("[Viewport] Resize error:", e)
-        }
-      }
-
-      updateBounds()
-    })
-
-    resizeObserver.observe(containerRef.current)
-    return () => resizeObserver.disconnect()
+    handleResize()
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
   }, [isInitialized])
-
-  // In native mode, listen for window move events to reposition viewport
-  useEffect(() => {
-    if (!nativeMode || !containerRef.current) return
-
-    // Function to update viewport bounds - wgpu fills entire container
-    const updateViewportBounds = async () => {
-      if (!containerRef.current) return
-      const rect = containerRef.current.getBoundingClientRect()
-      const x = Math.floor(rect.left)
-      const y = Math.floor(rect.top)
-      const w = Math.floor(rect.width)
-      const h = Math.floor(rect.height)
-
-      console.log("[Viewport] Container bounds:", { x, y, w, h })
-
-      try {
-        await viewportApi.updateBounds(x, y, w, h)
-      } catch (e) {
-        console.error("[Viewport] Update bounds error:", e)
-      }
-    }
-
-    // Update bounds on mount and when window moves
-    updateViewportBounds()
-
-    const handleWindowMove = () => {
-      updateViewportBounds()
-    }
-
-    // Listen for window move events (this is a simplified approach)
-    const interval = setInterval(handleWindowMove, 100)
-
-    return () => clearInterval(interval)
-  }, [nativeMode])
 
   // Camera control handlers
   const handlePointerDown = useCallback((e: PointerEvent<HTMLDivElement>) => {
@@ -281,10 +187,11 @@ function ViewportCanvas() {
       const deltaY = e.clientY - lastMousePos.current.y
 
       try {
+        // Use wgpuOverlayApi for inverted architecture
         if (dragMode.current === "orbit") {
-          viewportApi.orbitNative(deltaX * 0.01, deltaY * 0.01)
+          wgpuOverlayApi.orbit(deltaX * 0.01, deltaY * 0.01)
         } else {
-          viewportApi.panNative(deltaX * 0.01, deltaY * 0.01)
+          wgpuOverlayApi.pan(deltaX * 0.01, deltaY * 0.01)
         }
       } catch (error) {
         console.error("[Viewport] Camera control error:", error)
@@ -309,7 +216,7 @@ function ViewportCanvas() {
       e.preventDefault()
 
       try {
-        viewportApi.zoomNative(e.deltaY * -0.001)
+        wgpuOverlayApi.zoom(e.deltaY * -0.001)
       } catch (error) {
         console.error("[Viewport] Zoom error:", error)
       }
@@ -317,35 +224,17 @@ function ViewportCanvas() {
     [isInitialized],
   )
 
-  // Render loop for offscreen mode
-  useEffect(() => {
-    if (!isInitialized || nativeMode) return
-
-    const render = () => {
-      try {
-        viewportApi.renderFrame()
-      } catch (error) {
-        console.error("[Viewport] Render error:", error)
-      }
-      animationFrameRef.current = requestAnimationFrame(render)
-    }
-
-    render()
-
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-      }
-    }
-  }, [isInitialized, nativeMode])
+  // No render loop needed - wgpu runs continuously in Rust
 
   return (
     <div
       ref={containerRef}
       role="application"
       aria-label="3D Viewport"
-      className={`absolute inset-0 cursor-crosshair touch-none ${nativeMode ? "bg-transparent" : "bg-[#1a1a1a]"}`}
-      style={nativeMode ? { backgroundColor: "transparent" } : undefined}
+      // Inverted architecture: transparent so wgpu content shows through
+      // wgpu renders to entire window BEHIND this webview
+      className="absolute inset-0 cursor-crosshair touch-none bg-transparent"
+      style={{ backgroundColor: "transparent", pointerEvents: "auto" }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -363,85 +252,82 @@ function ViewportCanvas() {
         </div>
       )}
 
-      {/* Hidden in native mode to allow transparent background */}
-      {!nativeMode && (
-        <div className="absolute inset-0 pointer-events-none z-20">
-          {/* Top Left */}
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            className="absolute top-0 left-0 fill-card"
-            aria-hidden="true"
-          >
-            <path d="M0 0 L16 0 Q0 0 0 16 L0 0 Z" />
-            <path
-              d="M16 0 Q0 0 0 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="0.5"
-              className="text-border/30"
-            />
-          </svg>
-          {/* Top Right */}
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            className="absolute top-0 right-0 fill-card"
-            aria-hidden="true"
-          >
-            <path d="M16 0 L0 0 Q16 0 16 16 L16 0 Z" />
-            <path
-              d="M0 0 Q16 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="0.5"
-              className="text-border/30"
-            />
-          </svg>
-          {/* Bottom Left */}
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            className="absolute bottom-0 left-0 fill-card"
-            aria-hidden="true"
-          >
-            <path d="M0 16 L16 16 Q0 16 0 0 L0 16 Z" />
-            <path
-              d="M16 16 Q0 16 0 0"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="0.5"
-              className="text-border/30"
-            />
-          </svg>
-          {/* Bottom Right */}
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            className="absolute bottom-0 right-0 fill-card"
-            aria-hidden="true"
-          >
-            <path d="M16 16 L0 16 Q16 16 16 0 L16 16 Z" />
-            <path
-              d="M0 16 Q16 16 16 0"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="0.5"
-              className="text-border/30"
-            />
-          </svg>
-        </div>
-      )}
+      {/* Corner decorations */}
+      <div className="absolute inset-0 pointer-events-none z-20">
+        {/* Top Left */}
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          className="absolute -top-[1px] -left-[1px] fill-card"
+          aria-hidden="true"
+        >
+          <path d="M24 0 L0 0 L0 24 L1 24 L1 9 Q1 1 9 1 L24 1 Z" />
+          <path
+            d="M24 1 L9 1 Q1 1 1 9 L1 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1"
+            className="text-border"
+          />
+        </svg>
+        {/* Top Right */}
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          className="absolute -top-[1px] -right-[1px] fill-card"
+          aria-hidden="true"
+        >
+          <path d="M0 0 L24 0 L24 24 L23 24 L23 9 Q23 1 15 1 L0 1 Z" />
+          <path
+            d="M0 1 L15 1 Q23 1 23 9 L23 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1"
+            className="text-border"
+          />
+        </svg>
+        {/* Bottom Left */}
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          className="absolute -bottom-[1px] -left-[1px] fill-card"
+          aria-hidden="true"
+        >
+          <path d="M24 24 L0 24 L0 0 L1 0 L1 15 Q1 23 9 23 L24 23 Z" />
+          <path
+            d="M24 23 L9 23 Q1 23 1 15 L1 0"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1"
+            className="text-border"
+          />
+        </svg>
+        {/* Bottom Right */}
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          className="absolute -bottom-[1px] -right-[1px] fill-card"
+          aria-hidden="true"
+        >
+          <path d="M0 24 L24 24 L24 0 L23 0 L23 15 Q23 23 15 23 L0 23 Z" />
+          <path
+            d="M0 23 L15 23 Q23 23 23 15 L23 0"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1"
+            className="text-border"
+          />
+        </svg>
+      </div>
 
-      {/* Canvas is only used for offscreen mode - hidden in native mode */}
+      {/* Canvas not needed in inverted architecture - wgpu renders directly */}
       <canvas
         ref={canvasRef}
-        className={`absolute inset-0 w-full h-full ${isInitialized && !nativeMode ? "" : "opacity-0"}`}
-        style={{ imageRendering: "auto", pointerEvents: nativeMode ? "none" : "auto" }}
+        className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
       />
     </div>
   )
@@ -552,9 +438,9 @@ function BottomToolbar({ onOpenCommandPalette }: { onOpenCommandPalette: () => v
           preserveAspectRatio="none"
           aria-hidden="true"
         >
-          <path d="M0 0 L10 0 Q10 10 0 10 L0 0 Z" />
+          <path d="M0 0 L0 10 L10 10 Q0 10 0 0" />
           <path
-            d="M0 0 Q10 10 0 10"
+            d="M0 0 Q0 10 10 10"
             fill="none"
             stroke="currentColor"
             strokeWidth="0.5"

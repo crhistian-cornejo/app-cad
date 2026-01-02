@@ -5,6 +5,24 @@
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CADHY</title>
+    <style>
+      /* Transparent window for inverted wgpu architecture */
+      /* Only html and body are transparent - #root gets bg from React */
+      html, body {
+        background: transparent !important;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      #root {
+        width: 100%;
+        height: 100%;
+        /* Do NOT set transparent here - let React control backgrounds */
+        /* Panels will be opaque, only viewport will be transparent */
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

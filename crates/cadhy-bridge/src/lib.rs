@@ -45,13 +45,16 @@ pub mod cmd_scene;
 pub mod cmd_viewport;
 pub mod embedded_viewport;
 pub mod ui_overlay;
+pub mod wgpu_overlay;
 
 pub use cmd_overlay::OverlayViewportState;
+pub use cmd_viewport::WgpuOverlayState;
 pub use dto::*;
 pub use embedded_viewport::{EmbeddedViewport, FpsStats, RenderMessage, RenderSender};
 pub use error::{BridgeError, BridgeResult};
 pub use state::AppState;
 pub use ui_overlay::{OverlayLayout, UiOverlay, ViewportBounds};
+pub use wgpu_overlay::WgpuOverlay;
 
 use tauri::Manager;
 
@@ -94,6 +97,15 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
             cmd_viewport::viewport_pan_native,
             cmd_viewport::viewport_zoom_native,
             cmd_viewport::viewport_get_fps,
+            // WgpuOverlay commands (direct WebviewWindow surface rendering)
+            cmd_viewport::viewport_init_overlay,
+            cmd_viewport::viewport_overlay_active,
+            cmd_viewport::viewport_overlay_resize,
+            cmd_viewport::viewport_overlay_orbit,
+            cmd_viewport::viewport_overlay_pan,
+            cmd_viewport::viewport_overlay_zoom,
+            cmd_viewport::viewport_overlay_reset_camera,
+            cmd_viewport::viewport_overlay_set_view_mode,
             // Scene commands
             cmd_scene::scene_get_objects,
             cmd_scene::scene_add_object,

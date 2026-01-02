@@ -141,7 +141,7 @@ export const overlayApi = {
 
   /** Update layout configuration */
   setLayout: (layout: OverlayLayout) =>
-    invoke<ViewportBounds>("plugin:cadhy-bridge|overlay_set_layout", layout),
+    invoke<ViewportBounds>("plugin:cadhy-bridge|overlay_set_layout", { ...layout }),
 
   /** Toggle left panel visibility */
   toggleLeftPanel: () =>
@@ -178,4 +178,45 @@ export function getCurrentUiRegion(): UiRegion {
     return region
   }
   return "main"
+}
+
+// ============================================================================
+// WGPU VIEWPORT API (Inverted Architecture - lib.rs commands)
+// ============================================================================
+
+/**
+ * Direct Viewport API for the "inverted" wgpu architecture.
+ *
+ * These commands talk directly to the desktop app's lib.rs, which controls:
+ * - Raw Window with wgpu surface (renders 3D content)
+ * - Child WebView for React UI (transparent overlay)
+ *
+ * The wgpu render thread runs continuously at 100+ FPS in Rust.
+ * These commands send messages to that thread via crossbeam channels.
+ */
+export const wgpuOverlayApi = {
+  /** Orbit camera around target */
+  orbit: (deltaX: number, deltaY: number) =>
+    invoke<void>("viewport_orbit", { delta_x: deltaX, delta_y: deltaY }),
+
+  /** Pan camera (shift + drag) */
+  pan: (deltaX: number, deltaY: number) =>
+    invoke<void>("viewport_pan", { delta_x: deltaX, delta_y: deltaY }),
+
+  /** Zoom camera (scroll wheel) */
+  zoom: (delta: number) => invoke<void>("viewport_zoom", { delta }),
+
+  /** Reset camera to default position */
+  resetCamera: () => invoke<void>("viewport_reset_camera"),
+
+  /** Set view mode (solid/wireframe) */
+  setViewMode: (mode: "solid" | "wireframe") =>
+    invoke<void>("viewport_set_view_mode", { mode }),
+}
+
+// Update sceneApi to use the new direct command
+export const sceneApiDirect = {
+  /** Add a cube to the scene */
+  addCube: (name: string, size: number) =>
+    invoke<string>("scene_add_cube", { name, size }),
 }

@@ -111,7 +111,8 @@ export function AppLayout() {
 
   return (
     <TooltipProvider delay={300}>
-      <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
+      {/* Root is transparent to let wgpu show through viewport panel */}
+      <div className="flex h-screen w-screen flex-col overflow-hidden text-foreground">
         {/* Titlebar */}
         <Titlebar
           isMacOS={isMacOS}
@@ -162,7 +163,7 @@ function Titlebar({ isMacOS, theme, setTheme, onOpenSettings }: TitlebarProps) {
     <header
       data-tauri-drag-region
       className={cn(
-        "relative flex shrink-0 items-center bg-background/95 backdrop-blur-md border-b border-border",
+        "relative flex shrink-0 items-center bg-background border-b border-border",
         isMacOS ? "h-10 pl-[60px] pr-3" : "h-9 pl-3 pr-3"
       )}
     >
@@ -314,7 +315,7 @@ function StatusBar() {
   const { width, height, cursorPosition, fps, frameTime, viewMode } = useViewportStore()
 
   return (
-    <footer className="h-6 flex items-center justify-between px-3 bg-muted/50 border-t border-border/50 text-[11px] font-mono text-muted-foreground">
+    <footer className="h-6 flex items-center justify-between px-3 bg-background border-t border-border text-[11px] font-mono text-muted-foreground">
       {/* Left section - Status */}
       <div className="flex items-center gap-4">
         <span className="text-green-500">Ready</span>

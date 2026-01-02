@@ -2,7 +2,13 @@
 
 import { cn } from "@cadhy/ui/lib/utils"
 import * as React from "react"
-import { Panel, PanelGroup, PanelResizeHandle, type ImperativePanelHandle } from "react-resizable-panels"
+import {
+  Panel,
+  PanelGroup,
+  PanelResizeHandle,
+  type ImperativePanelHandle,
+} from "react-resizable-panels"
+import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip"
 import {
   DndContext,
   closestCenter,
@@ -59,51 +65,106 @@ export interface DockableSidebarProps {
 
 // Icons
 const ChevronDown = () => (
-  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m6 9 6 6 6-6"/>
+  <svg
+    width="10"
+    height="10"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="m6 9 6 6 6-6" />
   </svg>
 )
 
 const ChevronRight = () => (
-  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m9 18 6-6-6-6"/>
+  <svg
+    width="10"
+    height="10"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="m9 18 6-6-6-6" />
   </svg>
 )
 
 const GripVerticalIcon = () => (
-  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: "rotate(90deg)" }}>
-    <circle cx="9" cy="12" r="1" fill="currentColor"/>
-    <circle cx="9" cy="5" r="1" fill="currentColor"/>
-    <circle cx="9" cy="19" r="1" fill="currentColor"/>
-    <circle cx="15" cy="12" r="1" fill="currentColor"/>
-    <circle cx="15" cy="5" r="1" fill="currentColor"/>
-    <circle cx="15" cy="19" r="1" fill="currentColor"/>
+  <svg
+    width="11"
+    height="11"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    style={{ transform: "rotate(90deg)" }}
+  >
+    <circle cx="9" cy="12" r="1" fill="currentColor" />
+    <circle cx="9" cy="5" r="1" fill="currentColor" />
+    <circle cx="9" cy="19" r="1" fill="currentColor" />
+    <circle cx="15" cy="12" r="1" fill="currentColor" />
+    <circle cx="15" cy="5" r="1" fill="currentColor" />
+    <circle cx="15" cy="19" r="1" fill="currentColor" />
   </svg>
 )
 
 const DockSideIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect width="18" height="18" x="3" y="3" rx="2"/>
-    <path d="M15 3v18"/>
-    <path d="m8 9 3 3-3 3"/>
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect width="18" height="18" x="3" y="3" rx="2" />
+    <path d="M15 3v18" />
+    <path d="m8 9 3 3-3 3" />
   </svg>
 )
 
 const MaximizeIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M8 3H5a2 2 0 0 0-2 2v3"/>
-    <path d="M21 8V5a2 2 0 0 0-2-2h-3"/>
-    <path d="M3 16v3a2 2 0 0 0 2 2h3"/>
-    <path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+    <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+    <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+    <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
   </svg>
 )
 
 const FloatWindowIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M15 3h6v6"/>
-    <path d="m21 3-7 7"/>
-    <path d="m3 21 7-7"/>
-    <path d="M9 21H3v-6"/>
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M15 3h6v6" />
+    <path d="m21 3-7 7" />
+    <path d="m3 21 7-7" />
+    <path d="M9 21H3v-6" />
   </svg>
 )
 
@@ -133,7 +194,7 @@ function DockablePanelHeader({
       draggable="true"
       className={cn(
         "flex items-center h-7 px-1.5 bg-card border-b border-border shrink-0 gap-1 cursor-grab active:cursor-grabbing select-none",
-        className
+        className,
       )}
     >
       {/* Grip handle */}
@@ -151,9 +212,7 @@ function DockablePanelHeader({
         className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
       >
         {isCollapsed ? <ChevronRight /> : <ChevronDown />}
-        <span className="text-[11px] font-medium uppercase tracking-wider">
-          {label}
-        </span>
+        <span className="text-[11px] font-medium uppercase tracking-wider">{label}</span>
       </button>
 
       {/* Badge */}
@@ -200,19 +259,10 @@ interface SortablePanelItemProps {
   onFloat?: () => void
 }
 
-function SortablePanelItem({
-  panel,
-  onCollapse,
-  onFloat,
-}: SortablePanelItemProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: panel.id })
+function SortablePanelItem({ panel, onCollapse, onFloat }: SortablePanelItemProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: panel.id,
+  })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -224,10 +274,7 @@ function SortablePanelItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={cn(
-        "flex flex-col bg-card flex-1 min-h-0",
-        isDragging && "z-50 shadow-lg"
-      )}
+      className={cn("flex flex-col bg-card flex-1 min-h-0", isDragging && "z-50 shadow-lg")}
     >
       {/* Header - click to collapse entire panel */}
       <div className="flex items-center h-7 px-1.5 bg-card border-b border-border shrink-0 gap-1">
@@ -248,9 +295,7 @@ function SortablePanelItem({
           className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
         >
           <ChevronDown />
-          <span className="text-[11px] font-medium uppercase tracking-wider">
-            {panel.label}
-          </span>
+          <span className="text-[11px] font-medium uppercase tracking-wider">{panel.label}</span>
         </button>
 
         {/* Badge */}
@@ -276,9 +321,7 @@ function SortablePanelItem({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto min-h-0">
-        {panel.content}
-      </div>
+      <div className="flex-1 overflow-auto min-h-0">{panel.content}</div>
     </div>
   )
 }
@@ -303,7 +346,7 @@ export function DockableSidebar({
   const [panels, setPanels] = React.useState(initialPanels)
   // Collapsed panels = shown as vertical tabs, Expanded = shown with content
   const [collapsedPanelIds, setCollapsedPanelIds] = React.useState<Set<string>>(
-    new Set(initialPanels.filter((p) => p.defaultCollapsed).map((p) => p.id))
+    new Set(initialPanels.filter((p) => p.defaultCollapsed).map((p) => p.id)),
   )
   const [activeId, setActiveId] = React.useState<string | null>(null)
 
@@ -315,7 +358,7 @@ export function DockableSidebar({
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   )
 
   // Separate expanded and collapsed panels
@@ -341,20 +384,23 @@ export function DockableSidebar({
     setActiveId(event.active.id as string)
   }, [])
 
-  const handleDragEnd = React.useCallback((event: DragEndEvent) => {
-    const { active, over } = event
-    setActiveId(null)
+  const handleDragEnd = React.useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event
+      setActiveId(null)
 
-    if (over && active.id !== over.id) {
-      setPanels((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id)
-        const newIndex = items.findIndex((item) => item.id === over.id)
-        const newPanels = arrayMove(items, oldIndex, newIndex)
-        onPanelsReorder?.(newPanels)
-        return newPanels
-      })
-    }
-  }, [onPanelsReorder])
+      if (over && active.id !== over.id) {
+        setPanels((items) => {
+          const oldIndex = items.findIndex((item) => item.id === active.id)
+          const newIndex = items.findIndex((item) => item.id === over.id)
+          const newPanels = arrayMove(items, oldIndex, newIndex)
+          onPanelsReorder?.(newPanels)
+          return newPanels
+        })
+      }
+    },
+    [onPanelsReorder],
+  )
 
   // When all collapsed, use minimal width (~24px = ~1.5% of viewport)
   const collapsedSize = 1.5
@@ -377,32 +423,37 @@ export function DockableSidebar({
             className={cn(
               "flex flex-col bg-card shrink-0",
               side === "left" ? "border-r border-border" : "border-l border-border",
-              allCollapsed ? "w-full" : "w-6"
+              allCollapsed ? "w-full" : "w-6",
             )}
           >
             {collapsedPanels.map((panel) => (
-              <button
-                key={panel.id}
-                type="button"
-                onClick={() => expandPanel(panel.id)}
-                className="flex flex-col items-center py-2 px-1 transition-colors hover:bg-accent/50 gap-2"
-                title={`Expand ${panel.label}`}
-              >
-                {/* Grip icon */}
-                <span className="text-muted-foreground/40">
-                  <GripVerticalIcon />
-                </span>
-                {/* Vertical text */}
-                <span
-                  className="text-[9px] font-medium uppercase tracking-[0.15em] whitespace-nowrap text-muted-foreground"
-                  style={{
-                    writingMode: "vertical-rl",
-                    textOrientation: "mixed",
-                  }}
-                >
-                  {panel.label}
-                </span>
-              </button>
+              <Tooltip key={panel.id}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => expandPanel(panel.id)}
+                    className="flex flex-col items-center py-2 px-1 transition-colors hover:bg-accent/50 gap-2"
+                  >
+                    {/* Grip icon */}
+                    <span className="text-muted-foreground/40">
+                      <GripVerticalIcon />
+                    </span>
+                    {/* Vertical text */}
+                    <span
+                      className="text-[9px] font-medium uppercase tracking-[0.15em] whitespace-nowrap text-muted-foreground"
+                      style={{
+                        writingMode: "vertical-rl",
+                        textOrientation: "mixed",
+                      }}
+                    >
+                      {panel.label}
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side={side === "left" ? "right" : "left"}>
+                  Click to expand {panel.label} panel
+                </TooltipContent>
+              </Tooltip>
             ))}
           </div>
         )}
@@ -422,9 +473,7 @@ export function DockableSidebar({
               >
                 {expandedPanels.map((panel, index) => (
                   <React.Fragment key={panel.id}>
-                    {index > 0 && (
-                      <div className="h-px bg-border shrink-0" />
-                    )}
+                    {index > 0 && <div className="h-px bg-border shrink-0" />}
                     <SortablePanelItem
                       panel={panel}
                       onCollapse={() => collapsePanel(panel.id)}
@@ -479,13 +528,16 @@ export function FloatingPanel({
   const [isDragging, setIsDragging] = React.useState(false)
   const dragOffset = React.useRef({ x: 0, y: 0 })
 
-  const handleMouseDown = React.useCallback((e: React.MouseEvent) => {
-    setIsDragging(true)
-    dragOffset.current = {
-      x: e.clientX - position.x,
-      y: e.clientY - position.y,
-    }
-  }, [position])
+  const handleMouseDown = React.useCallback(
+    (e: React.MouseEvent) => {
+      setIsDragging(true)
+      dragOffset.current = {
+        x: e.clientX - position.x,
+        y: e.clientY - position.y,
+      }
+    },
+    [position],
+  )
 
   React.useEffect(() => {
     if (!isDragging) return
@@ -551,8 +603,15 @@ export function FloatingPanel({
               className="p-0.5 text-muted-foreground hover:text-foreground transition-colors"
               title="Close"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M18 6 6 18M6 6l12 12"/>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M18 6 6 18M6 6l12 12" />
               </svg>
             </button>
           )}
@@ -560,9 +619,7 @@ export function FloatingPanel({
       </div>
 
       {/* Content */}
-      <div className="h-[calc(100%-28px)] overflow-auto">
-        {content}
-      </div>
+      <div className="h-[calc(100%-28px)] overflow-auto">{content}</div>
     </div>
   )
 }

@@ -12,7 +12,8 @@ use tracing::{error, info};
 use cadhy_viewport::ViewMode;
 
 use crate::dto::{CameraDto, OrbitInputDto, PanInputDto, ViewModeDto, ViewportSizeDto, ZoomInputDto};
-use crate::embedded_viewport::{EmbeddedViewport, RenderMessage};
+use crate::embedded_viewport::{EmbeddedViewport, RenderMessage as EmbeddedMessage};
+use crate::wgpu_overlay::{WgpuOverlay, RenderMessage};
 use crate::error::BridgeResult;
 use crate::state::{AppState, CameraState};
 
@@ -691,7 +692,7 @@ pub async fn viewport_orbit_native<R: Runtime>(
         if let Some(viewport_state) = app.try_state::<EmbeddedViewportState<R>>() {
             if let Ok(guard) = viewport_state.read() {
                 if let Some(viewport) = guard.as_ref() {
-                    let _ = viewport.send(RenderMessage::Orbit { delta_x, delta_y });
+                    let _ = viewport.send(EmbeddedMessage::Orbit { delta_x, delta_y });
                 }
             }
         }
@@ -714,7 +715,7 @@ pub async fn viewport_pan_native<R: Runtime>(
         if let Some(viewport_state) = app.try_state::<EmbeddedViewportState<R>>() {
             if let Ok(guard) = viewport_state.read() {
                 if let Some(viewport) = guard.as_ref() {
-                    let _ = viewport.send(RenderMessage::Pan { delta_x, delta_y });
+                    let _ = viewport.send(EmbeddedMessage::Pan { delta_x, delta_y });
                 }
             }
         }
@@ -735,7 +736,7 @@ pub async fn viewport_zoom_native<R: Runtime>(
         if let Some(viewport_state) = app.try_state::<EmbeddedViewportState<R>>() {
             if let Ok(guard) = viewport_state.read() {
                 if let Some(viewport) = guard.as_ref() {
-                    let _ = viewport.send(RenderMessage::Zoom { delta });
+                    let _ = viewport.send(EmbeddedMessage::Zoom { delta });
                 }
             }
         }
@@ -758,6 +759,20 @@ pub async fn viewport_get_fps<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, AppState>,
 ) -> BridgeResult<FpsStatsDto> {
+    // First check WgpuOverlay
+    if let Some(overlay_state) = app.try_state::<WgpuOverlayState>() {
+        if let Ok(guard) = overlay_state.read() {
+            if let Some(overlay) = guard.as_ref() {
+                let stats = overlay.fps_stats();
+                return Ok(FpsStatsDto {
+                    fps: stats.fps,
+                    frame_time_ms: stats.frame_time_ms,
+                });
+            }
+        }
+    }
+
+    // Fallback to embedded viewport
     if state.is_embedded_mode() {
         if let Some(viewport_state) = app.try_state::<EmbeddedViewportState<R>>() {
             if let Ok(guard) = viewport_state.read() {
@@ -776,4 +791,248 @@ pub async fn viewport_get_fps<R: Runtime>(
         fps: 0.0,
         frame_time_ms: 0.0,
     })
+}
+
+// ============================================================================
+// WGPU OVERLAY COMMANDS (Direct WebviewWindow rendering)
+// ============================================================================
+
+/// Type alias for the managed WgpuOverlay state
+pub type WgpuOverlayState = Arc<RwLock<Option<WgpuOverlay>>>;
+
+/// Initialize wgpu overlay by creating a surface directly on the WebviewWindow
+///
+/// This approach renders wgpu to the ENTIRE window. The React UI components
+/// overlay on top using CSS z-index and transparent backgrounds.
+///
+/// IMPORTANT: On macOS, Metal layer creation MUST happen on the main thread.
+#[tauri::command]
+pub async fn viewport_init_overlay<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    width: u32,
+    height: u32,
+) -> BridgeResult<bool> {
+    // Check if already initialized
+    if let Some(overlay_state) = app.try_state::<WgpuOverlayState>() {
+        if let Ok(guard) = overlay_state.read() {
+            if guard.is_some() {
+                info!("WgpuOverlay already initialized, skipping");
+                return Ok(true);
+            }
+        }
+    }
+
+    info!("Initializing WgpuOverlay {}x{}", width, height);
+
+    // Verify main window exists
+    let _main_window = app
+        .get_webview_window("main")
+        .ok_or_else(|| crate::error::BridgeError::ViewportInit("Main window not found".to_string()))?;
+
+    let app_clone = app.clone();
+
+    // Use a channel to communicate the result from main thread
+    let (tx, rx) = std::sync::mpsc::channel::<Result<(), String>>();
+
+    // === CRITICAL: Run on main thread for macOS Metal ===
+    app.run_on_main_thread(move || {
+        info!("Running WgpuOverlay init on main thread...");
+
+        let result = (|| -> Result<(), String> {
+            // Get window again in closure
+            let window = app_clone
+                .get_webview_window("main")
+                .ok_or_else(|| "Main window not found".to_string())?;
+
+            // Create WgpuOverlay
+            let mut overlay = WgpuOverlay::new(&window, width, height)?;
+
+            // Start render loop (creates wgpu surface on THIS thread)
+            overlay.start_render_loop(window)?;
+
+            // Store in managed state
+            let overlay_state: WgpuOverlayState = Arc::new(RwLock::new(Some(overlay)));
+            app_clone.manage(overlay_state);
+
+            info!("WgpuOverlay initialized successfully on main thread");
+            Ok(())
+        })();
+
+        let _ = tx.send(result);
+    }).map_err(|e| crate::error::BridgeError::ViewportInit(format!("Main thread dispatch failed: {:?}", e)))?;
+
+    // Wait for result
+    let init_result = rx.recv()
+        .map_err(|e| crate::error::BridgeError::ViewportInit(format!("Failed to receive init result: {}", e)))?;
+
+    match init_result {
+        Ok(()) => {
+            info!("WgpuOverlay initialized successfully - 100+ FPS");
+            Ok(true)
+        }
+        Err(e) => {
+            error!("Failed to initialize WgpuOverlay: {}", e);
+            // Fall back to offscreen rendering
+            state
+                .init_renderer(width, height)
+                .await
+                .map_err(|e| crate::error::BridgeError::ViewportInit(e))?;
+            info!("Fell back to offscreen rendering");
+            Ok(false)
+        }
+    }
+}
+
+/// Check if WgpuOverlay is active
+#[tauri::command]
+pub async fn viewport_overlay_active<R: Runtime>(
+    app: AppHandle<R>,
+) -> BridgeResult<bool> {
+    if let Some(overlay_state) = app.try_state::<WgpuOverlayState>() {
+        if let Ok(guard) = overlay_state.read() {
+            return Ok(guard.is_some());
+        }
+    }
+    Ok(false)
+}
+
+/// Resize the WgpuOverlay
+#[tauri::command]
+pub async fn viewport_overlay_resize<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    width: u32,
+    height: u32,
+) -> BridgeResult<()> {
+    // Skip invalid sizes
+    if width == 0 || height == 0 {
+        return Ok(());
+    }
+
+    // Try WgpuOverlay first
+    if let Some(overlay_state) = app.try_state::<WgpuOverlayState>() {
+        if let Ok(guard) = overlay_state.read() {
+            if let Some(overlay) = guard.as_ref() {
+                let _ = overlay.resize(width, height);
+                return Ok(());
+            }
+        }
+    }
+
+    // Fallback to offscreen resize
+    viewport_resize(state, width, height).await
+}
+
+/// Send orbit command to WgpuOverlay
+#[tauri::command]
+pub async fn viewport_overlay_orbit<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    delta_x: f32,
+    delta_y: f32,
+) -> BridgeResult<()> {
+    // Try WgpuOverlay first
+    if let Some(overlay_state) = app.try_state::<WgpuOverlayState>() {
+        if let Ok(guard) = overlay_state.read() {
+            if let Some(overlay) = guard.as_ref() {
+                let _ = overlay.send(RenderMessage::Orbit { delta_x, delta_y });
+                return Ok(());
+            }
+        }
+    }
+
+    // Fallback
+    viewport_orbit(state, OrbitInputDto { delta_x, delta_y }).await?;
+    Ok(())
+}
+
+/// Send pan command to WgpuOverlay
+#[tauri::command]
+pub async fn viewport_overlay_pan<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    delta_x: f32,
+    delta_y: f32,
+) -> BridgeResult<()> {
+    // Try WgpuOverlay first
+    if let Some(overlay_state) = app.try_state::<WgpuOverlayState>() {
+        if let Ok(guard) = overlay_state.read() {
+            if let Some(overlay) = guard.as_ref() {
+                let _ = overlay.send(RenderMessage::Pan { delta_x, delta_y });
+                return Ok(());
+            }
+        }
+    }
+
+    // Fallback
+    viewport_pan(state, PanInputDto { delta_x, delta_y }).await?;
+    Ok(())
+}
+
+/// Send zoom command to WgpuOverlay
+#[tauri::command]
+pub async fn viewport_overlay_zoom<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    delta: f32,
+) -> BridgeResult<()> {
+    // Try WgpuOverlay first
+    if let Some(overlay_state) = app.try_state::<WgpuOverlayState>() {
+        if let Ok(guard) = overlay_state.read() {
+            if let Some(overlay) = guard.as_ref() {
+                let _ = overlay.send(RenderMessage::Zoom { delta });
+                return Ok(());
+            }
+        }
+    }
+
+    // Fallback
+    viewport_zoom(state, ZoomInputDto { delta }).await?;
+    Ok(())
+}
+
+/// Reset camera in WgpuOverlay
+#[tauri::command]
+pub async fn viewport_overlay_reset_camera<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+) -> BridgeResult<CameraDto> {
+    // Try WgpuOverlay first
+    if let Some(overlay_state) = app.try_state::<WgpuOverlayState>() {
+        if let Ok(guard) = overlay_state.read() {
+            if let Some(overlay) = guard.as_ref() {
+                let _ = overlay.send(RenderMessage::ResetCamera);
+            }
+        }
+    }
+
+    // Also reset state camera
+    viewport_reset_camera(state).await
+}
+
+/// Set view mode in WgpuOverlay
+#[tauri::command]
+pub async fn viewport_overlay_set_view_mode<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    mode: ViewModeDto,
+) -> BridgeResult<()> {
+    let view_mode = match mode {
+        ViewModeDto::Solid => ViewMode::Solid,
+        ViewModeDto::Wireframe => ViewMode::Wireframe,
+    };
+
+    // Try WgpuOverlay first
+    if let Some(overlay_state) = app.try_state::<WgpuOverlayState>() {
+        if let Ok(guard) = overlay_state.read() {
+            if let Some(overlay) = guard.as_ref() {
+                let _ = overlay.send(RenderMessage::SetViewMode(view_mode));
+                return Ok(());
+            }
+        }
+    }
+
+    // Fallback
+    viewport_set_view_mode(state, mode).await
 }

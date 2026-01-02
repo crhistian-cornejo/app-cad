@@ -35,6 +35,8 @@ pollster = "0.4"
 
 cadhy-bridge = { workspace = true }
 cadhy-viewport = { workspace = true }
+crossbeam-channel = "0.5"
+uuid = { workspace = true }
 
 [features]
 default = ["custom-protocol"]
