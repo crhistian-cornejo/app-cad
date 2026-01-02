@@ -45,7 +45,7 @@ pub mod cmd_viewport;
 pub mod embedded_viewport;
 
 pub use dto::*;
-pub use embedded_viewport::{EmbeddedViewport, RenderMessage, RenderSender};
+pub use embedded_viewport::{EmbeddedViewport, FpsStats, RenderMessage, RenderSender};
 pub use error::{BridgeError, BridgeResult};
 pub use state::AppState;
 
@@ -89,6 +89,7 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
             cmd_viewport::viewport_orbit_native,
             cmd_viewport::viewport_pan_native,
             cmd_viewport::viewport_zoom_native,
+            cmd_viewport::viewport_get_fps,
             // Scene commands
             cmd_scene::scene_get_objects,
             cmd_scene::scene_add_object,

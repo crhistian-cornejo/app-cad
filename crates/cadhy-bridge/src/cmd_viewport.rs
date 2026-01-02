@@ -626,8 +626,7 @@ pub async fn viewport_is_native(state: State<'_, AppState>) -> BridgeResult<bool
 /// Update embedded viewport size and position
 ///
 /// Called from frontend when the viewport area changes (panel resize, window move, etc.)
-/// Note: Position updates are now less critical since child window moves with parent,
-/// but we still handle resize events.
+/// The x,y coordinates are CSS (logical) pixels relative to the webview content area.
 #[tauri::command]
 pub async fn viewport_update_bounds<R: Runtime>(
     app: AppHandle<R>,
@@ -643,23 +642,33 @@ pub async fn viewport_update_bounds<R: Runtime>(
         return Ok(());
     }
 
-    // Get the main window to calculate absolute position
+    // Get the main window to calculate title bar offset
     let main_window = match app.get_webview_window("main") {
         Some(w) => w,
         None => return Ok(()),
     };
 
-    let main_inner_pos = main_window.inner_position()
+    let scale_factor = main_window.scale_factor().unwrap_or(1.0);
+    
+    // Get title bar offset by comparing outer and inner positions
+    let outer_pos = main_window.outer_position()
+        .map_err(|e| crate::error::BridgeError::ViewportInit(e.to_string()))?;
+    let inner_pos = main_window.inner_position()
         .map_err(|e| crate::error::BridgeError::ViewportInit(e.to_string()))?;
     
-    let abs_x = main_inner_pos.x + x;
-    let abs_y = main_inner_pos.y + y;
+    // Title bar height in physical pixels, convert to logical
+    let title_bar_height_physical = inner_pos.y - outer_pos.y;
+    let title_bar_height = (title_bar_height_physical as f64 / scale_factor) as i32;
+    
+    // For child windows with parent(), position is relative to parent's outer bounds
+    let child_x = x;
+    let child_y = y + title_bar_height;
 
     // Get the embedded viewport from managed state and update bounds
     if let Some(viewport_state) = app.try_state::<EmbeddedViewportState<R>>() {
         if let Ok(guard) = viewport_state.read() {
             if let Some(viewport) = guard.as_ref() {
-                let _ = viewport.update_bounds(abs_x, abs_y, width, height);
+                let _ = viewport.update_bounds(child_x, child_y, width, height);
             }
         }
     }
@@ -736,4 +745,37 @@ pub async fn viewport_zoom_native<R: Runtime>(
         viewport_zoom(state, ZoomInputDto { delta }).await?;
     }
     Ok(())
+}
+
+/// FPS statistics DTO for frontend
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct FpsStatsDto {
+    pub fps: f64,
+    pub frame_time_ms: f64,
+}
+
+/// Get current FPS statistics from the embedded viewport
+#[tauri::command]
+pub async fn viewport_get_fps<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+) -> BridgeResult<FpsStatsDto> {
+    if state.is_embedded_mode() {
+        if let Some(viewport_state) = app.try_state::<EmbeddedViewportState<R>>() {
+            if let Ok(guard) = viewport_state.read() {
+                if let Some(viewport) = guard.as_ref() {
+                    let stats = viewport.fps_stats();
+                    return Ok(FpsStatsDto {
+                        fps: stats.fps,
+                        frame_time_ms: stats.frame_time_ms,
+                    });
+                }
+            }
+        }
+    }
+    // Fallback: no FPS data available
+    Ok(FpsStatsDto {
+        fps: 0.0,
+        frame_time_ms: 0.0,
+    })
 }

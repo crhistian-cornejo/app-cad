@@ -51,6 +51,13 @@ pub enum RenderMessage {
 /// Thread-safe channel sender for render messages
 pub type RenderSender = crossbeam_channel::Sender<RenderMessage>;
 
+/// FPS statistics from the render thread
+#[derive(Debug, Clone, Copy, Default)]
+pub struct FpsStats {
+    pub fps: f64,
+    pub frame_time_ms: f64,
+}
+
 /// Embedded viewport that renders wgpu content in a child window
 pub struct EmbeddedViewport<R: Runtime> {
     /// The child window for wgpu rendering
@@ -67,6 +74,8 @@ pub struct EmbeddedViewport<R: Runtime> {
     view_mode: Arc<RwLock<ViewMode>>,
     /// Render thread handle
     render_thread: Option<JoinHandle<()>>,
+    /// Current FPS stats (updated by render thread)
+    fps_stats: Arc<RwLock<FpsStats>>,
 }
 
 impl<R: Runtime> EmbeddedViewport<R> {
@@ -75,10 +84,10 @@ impl<R: Runtime> EmbeddedViewport<R> {
     /// # Arguments
     /// * `app` - The Tauri app handle
     /// * `main_window` - The main window to embed into (parent)
-    /// * `x` - X position relative to main window's inner area
-    /// * `y` - Y position relative to main window's inner area
-    /// * `width` - Viewport width
-    /// * `height` - Viewport height
+    /// * `x` - X position relative to main window's content area (CSS pixels)
+    /// * `y` - Y position relative to main window's content area (CSS pixels)
+    /// * `width` - Viewport width (CSS pixels)
+    /// * `height` - Viewport height (CSS pixels)
     pub fn new(
         app: &AppHandle<R>,
         main_window: &WebviewWindow<R>,
@@ -92,28 +101,57 @@ impl<R: Runtime> EmbeddedViewport<R> {
             width, height, x, y
         );
 
-        // Get main window's inner position to calculate absolute screen position
-        let main_inner_pos = main_window
-            .inner_position()
-            .map_err(|e| format!("Failed to get main window position: {}", e))?;
-
-        let abs_x = main_inner_pos.x + x;
-        let abs_y = main_inner_pos.y + y;
-
-        tracing::info!(
-            "Absolute position: ({}, {}) - main inner: ({}, {})",
-            abs_x, abs_y, main_inner_pos.x, main_inner_pos.y
-        );
-
         // Get the raw Window from WebviewWindow for parent relationship
         let parent_window = main_window.as_ref().window();
 
+        // With parent() on macOS, the child window positions are relative to the parent.
+        // The x,y from frontend are CSS (logical) pixels relative to the webview content area.
+        // 
+        // On macOS with parent windows, we need to account for the title bar offset.
+        // The webview content starts below the title bar, so we need to add the title bar height.
+        // 
+        // outer_position = window position on screen
+        // inner_position = content area position on screen (after title bar)
+        // The difference gives us the title bar height
+        
+        let scale_factor = main_window
+            .scale_factor()
+            .map_err(|e| format!("Failed to get scale factor: {}", e))?;
+        
+        // Get title bar offset by comparing outer and inner positions
+        let outer_pos = main_window
+            .outer_position()
+            .map_err(|e| format!("Failed to get outer position: {}", e))?;
+        let inner_pos = main_window
+            .inner_position()
+            .map_err(|e| format!("Failed to get inner position: {}", e))?;
+        
+        // Title bar height in physical pixels
+        let title_bar_height_physical = inner_pos.y - outer_pos.y;
+        // Convert to logical pixels
+        let title_bar_height = (title_bar_height_physical as f64 / scale_factor) as i32;
+        
+        // For child windows with parent(), position is relative to parent's content area
+        // We just use the CSS coordinates directly, adjusted for the title bar
+        let child_x = x;
+        let child_y = y + title_bar_height;
+
+        tracing::info!(
+            "Child window position: ({}, {}) - title_bar_height: {} - scale: {}",
+            child_x, child_y, title_bar_height, scale_factor
+        );
+
         // Create a child window (raw Window, not WebviewWindow)
         // This window has no webview, just a native surface for wgpu
+        //
+        // STRATEGY: Position wgpu window ON TOP with click-through
+        // 1. Use ignore_cursor_events to let mouse clicks pass through to webview
+        // 2. Webview receives mouse events and forwards them via IPC
+        // 3. wgpu renders at 60+ FPS in the child window
         let window = WindowBuilder::new(app, "viewport-native")
             .parent(&parent_window)
             .map_err(|e| format!("Failed to set parent window: {}", e))?
-            .position(abs_x as f64, abs_y as f64)
+            .position(child_x as f64, child_y as f64)
             .inner_size(width as f64, height as f64)
             .decorations(false)
             .transparent(false)
@@ -124,7 +162,12 @@ impl<R: Runtime> EmbeddedViewport<R> {
             .build()
             .map_err(|e| format!("Failed to create viewport window: {}", e))?;
 
-        tracing::info!("Child window created successfully");
+        // Enable cursor event passthrough so mouse events go to the webview behind
+        if let Err(e) = window.set_ignore_cursor_events(true) {
+            tracing::warn!("Failed to set ignore_cursor_events: {}", e);
+        }
+
+        tracing::info!("Child window created successfully (ignore_cursor_events=true)");
 
         Ok(Self {
             window,
@@ -134,6 +177,7 @@ impl<R: Runtime> EmbeddedViewport<R> {
             scene: Arc::new(RwLock::new(Scene::new())),
             view_mode: Arc::new(RwLock::new(ViewMode::Solid)),
             render_thread: None,
+            fps_stats: Arc::new(RwLock::new(FpsStats::default())),
         })
     }
 
@@ -170,6 +214,7 @@ impl<R: Runtime> EmbeddedViewport<R> {
         let scene = self.scene.clone();
         let view_mode = self.view_mode.clone();
         let viewport_for_thread = viewport.clone();
+        let fps_stats = self.fps_stats.clone();
 
         running.store(true, Ordering::SeqCst);
 
@@ -301,11 +346,29 @@ impl<R: Runtime> EmbeddedViewport<R> {
                     }
                 }
 
-                // FPS logging every 5 seconds
+                // FPS tracking - update every second for UI, log every 5 seconds
                 frame_count += 1;
-                if last_fps_log.elapsed() >= Duration::from_secs(5) {
-                    let fps = frame_count as f64 / last_fps_log.elapsed().as_secs_f64();
-                    tracing::info!("Embedded viewport FPS: {:.1}", fps);
+                let elapsed_since_fps_update = last_fps_log.elapsed();
+                if elapsed_since_fps_update >= Duration::from_secs(1) {
+                    let fps = frame_count as f64 / elapsed_since_fps_update.as_secs_f64();
+                    let frame_time_ms = 1000.0 / fps;
+                    
+                    // Update FPS stats for UI
+                    if let Ok(mut stats) = fps_stats.write() {
+                        stats.fps = fps;
+                        stats.frame_time_ms = frame_time_ms;
+                    }
+                    
+                    // Log every 5 updates (~5 seconds)
+                    static mut LOG_COUNTER: u32 = 0;
+                    unsafe {
+                        LOG_COUNTER += 1;
+                        if LOG_COUNTER >= 5 {
+                            tracing::info!("Embedded viewport FPS: {:.1}", fps);
+                            LOG_COUNTER = 0;
+                        }
+                    }
+                    
                     frame_count = 0;
                     last_fps_log = Instant::now();
                 }
@@ -344,15 +407,16 @@ impl<R: Runtime> EmbeddedViewport<R> {
     }
 
     /// Update window position and size
+    /// Note: x, y should be in logical (CSS) screen coordinates
     pub fn update_bounds(&self, x: i32, y: i32, width: u32, height: u32) -> Result<(), String> {
-        // Update window position
-        let _ = self.window.set_position(tauri::Position::Physical(
-            tauri::PhysicalPosition::new(x, y),
+        // Update window position using logical coordinates
+        let _ = self.window.set_position(tauri::Position::Logical(
+            tauri::LogicalPosition::new(x as f64, y as f64),
         ));
 
-        // Update window size
-        let _ = self.window.set_size(tauri::Size::Physical(
-            tauri::PhysicalSize::new(width, height),
+        // Update window size using logical coordinates
+        let _ = self.window.set_size(tauri::Size::Logical(
+            tauri::LogicalSize::new(width as f64, height as f64),
         ));
 
         // Notify render thread
@@ -374,6 +438,14 @@ impl<R: Runtime> EmbeddedViewport<R> {
             .read()
             .map(|v| *v)
             .unwrap_or(ViewMode::Solid)
+    }
+
+    /// Get current FPS statistics
+    pub fn fps_stats(&self) -> FpsStats {
+        self.fps_stats
+            .read()
+            .map(|s| *s)
+            .unwrap_or_default()
     }
 
     /// Stop the render loop

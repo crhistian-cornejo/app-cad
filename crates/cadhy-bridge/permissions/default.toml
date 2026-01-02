@@ -40,6 +40,7 @@ permissions = [
     "allow-viewport-orbit-native",
     "allow-viewport-pan-native",
     "allow-viewport-zoom-native",
+    "allow-viewport-get-fps",
     # Scene commands
     "allow-scene-get-objects",
     "allow-scene-add-object",

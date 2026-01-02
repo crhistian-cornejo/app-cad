@@ -2187,10 +2187,10 @@
       "description": "Permission identifier",
       "oneOf": [
         {
-          "description": "Default permissions for CADHY 3D plugin - grants access to all commands\n#### This default permission set includes:\n\n- `allow-project-ping`\n- `allow-project-new`\n- `allow-project-undo`\n- `allow-project-redo`\n- `allow-project-can-undo`\n- `allow-project-can-redo`\n- `allow-viewport-init`\n- `allow-viewport-is-initialized`\n- `allow-viewport-render-frame`\n- `allow-viewport-resize`\n- `allow-viewport-get-size`\n- `allow-viewport-set-camera`\n- `allow-viewport-get-camera`\n- `allow-viewport-orbit`\n- `allow-viewport-pan`\n- `allow-viewport-zoom`\n- `allow-viewport-frame-selection`\n- `allow-viewport-frame-all`\n- `allow-viewport-set-view-mode`\n- `allow-viewport-get-view-mode`\n- `allow-viewport-reset-camera`\n- `allow-viewport-set-settings`\n- `allow-viewport-get-settings`\n- `allow-viewport-is-dirty`\n- `allow-viewport-clear-dirty`\n- `allow-viewport-init-native`\n- `allow-viewport-is-native`\n- `allow-viewport-update-bounds`\n- `allow-viewport-orbit-native`\n- `allow-viewport-pan-native`\n- `allow-viewport-zoom-native`\n- `allow-scene-get-objects`\n- `allow-scene-add-object`\n- `allow-scene-add-primitive`\n- `allow-scene-add-cube`\n- `allow-scene-remove-object`\n- `allow-scene-select`\n- `allow-scene-deselect-all`\n- `allow-scene-get-selection`\n- `allow-scene-set-transform`\n- `allow-scene-get-transform`",
+          "description": "Default permissions for CADHY 3D plugin - grants access to all commands\n#### This default permission set includes:\n\n- `allow-project-ping`\n- `allow-project-new`\n- `allow-project-undo`\n- `allow-project-redo`\n- `allow-project-can-undo`\n- `allow-project-can-redo`\n- `allow-viewport-init`\n- `allow-viewport-is-initialized`\n- `allow-viewport-render-frame`\n- `allow-viewport-resize`\n- `allow-viewport-get-size`\n- `allow-viewport-set-camera`\n- `allow-viewport-get-camera`\n- `allow-viewport-orbit`\n- `allow-viewport-pan`\n- `allow-viewport-zoom`\n- `allow-viewport-frame-selection`\n- `allow-viewport-frame-all`\n- `allow-viewport-set-view-mode`\n- `allow-viewport-get-view-mode`\n- `allow-viewport-reset-camera`\n- `allow-viewport-set-settings`\n- `allow-viewport-get-settings`\n- `allow-viewport-is-dirty`\n- `allow-viewport-clear-dirty`\n- `allow-viewport-init-native`\n- `allow-viewport-is-native`\n- `allow-viewport-update-bounds`\n- `allow-viewport-orbit-native`\n- `allow-viewport-pan-native`\n- `allow-viewport-zoom-native`\n- `allow-viewport-get-fps`\n- `allow-scene-get-objects`\n- `allow-scene-add-object`\n- `allow-scene-add-primitive`\n- `allow-scene-add-cube`\n- `allow-scene-remove-object`\n- `allow-scene-select`\n- `allow-scene-deselect-all`\n- `allow-scene-get-selection`\n- `allow-scene-set-transform`\n- `allow-scene-get-transform`",
           "type": "string",
           "const": "cadhy-bridge:default",
-          "markdownDescription": "Default permissions for CADHY 3D plugin - grants access to all commands\n#### This default permission set includes:\n\n- `allow-project-ping`\n- `allow-project-new`\n- `allow-project-undo`\n- `allow-project-redo`\n- `allow-project-can-undo`\n- `allow-project-can-redo`\n- `allow-viewport-init`\n- `allow-viewport-is-initialized`\n- `allow-viewport-render-frame`\n- `allow-viewport-resize`\n- `allow-viewport-get-size`\n- `allow-viewport-set-camera`\n- `allow-viewport-get-camera`\n- `allow-viewport-orbit`\n- `allow-viewport-pan`\n- `allow-viewport-zoom`\n- `allow-viewport-frame-selection`\n- `allow-viewport-frame-all`\n- `allow-viewport-set-view-mode`\n- `allow-viewport-get-view-mode`\n- `allow-viewport-reset-camera`\n- `allow-viewport-set-settings`\n- `allow-viewport-get-settings`\n- `allow-viewport-is-dirty`\n- `allow-viewport-clear-dirty`\n- `allow-viewport-init-native`\n- `allow-viewport-is-native`\n- `allow-viewport-update-bounds`\n- `allow-viewport-orbit-native`\n- `allow-viewport-pan-native`\n- `allow-viewport-zoom-native`\n- `allow-scene-get-objects`\n- `allow-scene-add-object`\n- `allow-scene-add-primitive`\n- `allow-scene-add-cube`\n- `allow-scene-remove-object`\n- `allow-scene-select`\n- `allow-scene-deselect-all`\n- `allow-scene-get-selection`\n- `allow-scene-set-transform`\n- `allow-scene-get-transform`"
+          "markdownDescription": "Default permissions for CADHY 3D plugin - grants access to all commands\n#### This default permission set includes:\n\n- `allow-project-ping`\n- `allow-project-new`\n- `allow-project-undo`\n- `allow-project-redo`\n- `allow-project-can-undo`\n- `allow-project-can-redo`\n- `allow-viewport-init`\n- `allow-viewport-is-initialized`\n- `allow-viewport-render-frame`\n- `allow-viewport-resize`\n- `allow-viewport-get-size`\n- `allow-viewport-set-camera`\n- `allow-viewport-get-camera`\n- `allow-viewport-orbit`\n- `allow-viewport-pan`\n- `allow-viewport-zoom`\n- `allow-viewport-frame-selection`\n- `allow-viewport-frame-all`\n- `allow-viewport-set-view-mode`\n- `allow-viewport-get-view-mode`\n- `allow-viewport-reset-camera`\n- `allow-viewport-set-settings`\n- `allow-viewport-get-settings`\n- `allow-viewport-is-dirty`\n- `allow-viewport-clear-dirty`\n- `allow-viewport-init-native`\n- `allow-viewport-is-native`\n- `allow-viewport-update-bounds`\n- `allow-viewport-orbit-native`\n- `allow-viewport-pan-native`\n- `allow-viewport-zoom-native`\n- `allow-viewport-get-fps`\n- `allow-scene-get-objects`\n- `allow-scene-add-object`\n- `allow-scene-add-primitive`\n- `allow-scene-add-cube`\n- `allow-scene-remove-object`\n- `allow-scene-select`\n- `allow-scene-deselect-all`\n- `allow-scene-get-selection`\n- `allow-scene-set-transform`\n- `allow-scene-get-transform`"
         },
         {
           "description": "Enables the project_can_redo command without any pre-configured scope.",
@@ -2311,6 +2311,12 @@
           "type": "string",
           "const": "cadhy-bridge:allow-viewport-get-camera",
           "markdownDescription": "Enables the viewport_get_camera command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the viewport_get_fps command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:allow-viewport-get-fps",
+          "markdownDescription": "Enables the viewport_get_fps command without any pre-configured scope."
         },
         {
           "description": "Enables the viewport_get_settings command without any pre-configured scope.",
@@ -2557,6 +2563,12 @@
           "type": "string",
           "const": "cadhy-bridge:deny-viewport-get-camera",
           "markdownDescription": "Denies the viewport_get_camera command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the viewport_get_fps command without any pre-configured scope.",
+          "type": "string",
+          "const": "cadhy-bridge:deny-viewport-get-fps",
+          "markdownDescription": "Denies the viewport_get_fps command without any pre-configured scope."
         },
         {
           "description": "Denies the viewport_get_settings command without any pre-configured scope.",

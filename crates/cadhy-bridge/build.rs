@@ -36,6 +36,7 @@ const COMMANDS: &[&str] = &[
     "viewport_orbit_native",
     "viewport_pan_native",
     "viewport_zoom_native",
+    "viewport_get_fps",
     // Scene commands
     "scene_get_objects",
     "scene_add_object",
@@ -50,6 +51,5 @@ const COMMANDS: &[&str] = &[
 ];
 
 fn main() {
-    tauri_plugin::Builder::new(COMMANDS)
-        .build();
+    tauri_plugin::Builder::new(COMMANDS).build();
 }

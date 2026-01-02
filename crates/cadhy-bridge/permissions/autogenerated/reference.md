@@ -35,6 +35,7 @@ Default permissions for CADHY 3D plugin - grants access to all commands
 - `allow-viewport-orbit-native`
 - `allow-viewport-pan-native`
 - `allow-viewport-zoom-native`
+- `allow-viewport-get-fps`
 - `allow-scene-get-objects`
 - `allow-scene-add-object`
 - `allow-scene-add-primitive`
@@ -571,6 +572,32 @@ Enables the viewport_get_camera command without any pre-configured scope.
 <td>
 
 Denies the viewport_get_camera command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:allow-viewport-get-fps`
+
+</td>
+<td>
+
+Enables the viewport_get_fps command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`cadhy-bridge:deny-viewport-get-fps`
+
+</td>
+<td>
+
+Denies the viewport_get_fps command without any pre-configured scope.
 
 </td>
 </tr>

@@ -16,8 +16,7 @@ export const viewportApi = {
     invoke<boolean>("plugin:cadhy-bridge|viewport_init_native", { width, height, x, y }),
 
   /** Check if native mode is active */
-  isNative: () =>
-    invoke<boolean>("plugin:cadhy-bridge|viewport_is_native"),
+  isNative: () => invoke<boolean>("plugin:cadhy-bridge|viewport_is_native"),
 
   /** Update native viewport position and size */
   updateBounds: (x: number, y: number, width: number, height: number) =>
@@ -35,6 +34,10 @@ export const viewportApi = {
   zoomNative: (delta: number) =>
     invoke<void>("plugin:cadhy-bridge|viewport_zoom_native", { delta }),
 
+  /** Get FPS statistics from embedded viewport */
+  getFps: () =>
+    invoke<{ fps: number; frame_time_ms: number }>("plugin:cadhy-bridge|viewport_get_fps"),
+
   // === FALLBACK MODE (Compatibility) ===
 
   init: (width: number, height: number) =>
@@ -43,8 +46,7 @@ export const viewportApi = {
   resize: (width: number, height: number) =>
     invoke<void>("plugin:cadhy-bridge|viewport_resize", { width, height }),
 
-  renderFrame: () =>
-    invoke<string>("plugin:cadhy-bridge|viewport_render_frame"),
+  renderFrame: () => invoke<string>("plugin:cadhy-bridge|viewport_render_frame"),
 
   orbit: (deltaX: number, deltaY: number) =>
     invoke<void>("plugin:cadhy-bridge|viewport_orbit", {
@@ -56,34 +58,27 @@ export const viewportApi = {
       input: { delta_x: deltaX, delta_y: deltaY },
     }),
 
-  zoom: (delta: number) =>
-    invoke<void>("plugin:cadhy-bridge|viewport_zoom", { input: { delta } }),
+  zoom: (delta: number) => invoke<void>("plugin:cadhy-bridge|viewport_zoom", { input: { delta } }),
 
   // === SHARED COMMANDS ===
 
-  frameAll: () =>
-    invoke<void>("plugin:cadhy-bridge|viewport_frame_all"),
+  frameAll: () => invoke<void>("plugin:cadhy-bridge|viewport_frame_all"),
 
-  resetCamera: () =>
-    invoke<void>("plugin:cadhy-bridge|viewport_reset_camera"),
+  resetCamera: () => invoke<void>("plugin:cadhy-bridge|viewport_reset_camera"),
 
   setViewMode: (mode: "solid" | "wireframe") =>
     invoke<void>("plugin:cadhy-bridge|viewport_set_view_mode", { mode }),
 
-  getViewMode: () =>
-    invoke<"solid" | "wireframe">("plugin:cadhy-bridge|viewport_get_view_mode"),
+  getViewMode: () => invoke<"solid" | "wireframe">("plugin:cadhy-bridge|viewport_get_view_mode"),
 
   setSettings: (settings: ViewportSettings) =>
     invoke<void>("plugin:cadhy-bridge|viewport_set_settings", { settings }),
 
-  getSettings: () =>
-    invoke<ViewportSettings>("plugin:cadhy-bridge|viewport_get_settings"),
+  getSettings: () => invoke<ViewportSettings>("plugin:cadhy-bridge|viewport_get_settings"),
 
-  isDirty: () =>
-    invoke<boolean>("plugin:cadhy-bridge|viewport_is_dirty"),
+  isDirty: () => invoke<boolean>("plugin:cadhy-bridge|viewport_is_dirty"),
 
-  clearDirty: () =>
-    invoke<void>("plugin:cadhy-bridge|viewport_clear_dirty"),
+  clearDirty: () => invoke<void>("plugin:cadhy-bridge|viewport_clear_dirty"),
 }
 
 // Scene API
@@ -94,18 +89,13 @@ export const sceneApi = {
 
 // Project API
 export const projectApi = {
-  newProject: () =>
-    invoke<void>("plugin:cadhy-bridge|project_new"),
+  newProject: () => invoke<void>("plugin:cadhy-bridge|project_new"),
 
-  undo: () =>
-    invoke<void>("plugin:cadhy-bridge|project_undo"),
+  undo: () => invoke<void>("plugin:cadhy-bridge|project_undo"),
 
-  redo: () =>
-    invoke<void>("plugin:cadhy-bridge|project_redo"),
+  redo: () => invoke<void>("plugin:cadhy-bridge|project_redo"),
 
-  canUndo: () =>
-    invoke<boolean>("plugin:cadhy-bridge|project_can_undo"),
+  canUndo: () => invoke<boolean>("plugin:cadhy-bridge|project_can_undo"),
 
-  canRedo: () =>
-    invoke<boolean>("plugin:cadhy-bridge|project_can_redo"),
+  canRedo: () => invoke<boolean>("plugin:cadhy-bridge|project_can_redo"),
 }
