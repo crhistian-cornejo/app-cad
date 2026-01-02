@@ -9,7 +9,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { useSceneStore } from "@/stores/scene-store"
 import { Input, Label, Button, Separator } from "@cadhy/ui"
-import { ArrowMoveIcon, RotateClockwiseIcon, Resize01Icon, RefreshIcon } from "@hugeicons/core-free-icons"
+import { ThreeDMoveIcon, RotateClockwiseIcon, Resize01Icon, RefreshIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import type { TransformDto } from "@/lib/tauri"
 
@@ -127,7 +127,7 @@ export function PropertiesPanel() {
           {/* Position */}
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <HugeiconsIcon icon={ArrowMoveIcon} size={14} className="text-muted-foreground" />
+              <HugeiconsIcon icon={ThreeDMoveIcon} size={14} className="text-muted-foreground" />
               <Label className="text-[10px] uppercase tracking-wider">Position</Label>
             </div>
             <div className="grid grid-cols-3 gap-2">

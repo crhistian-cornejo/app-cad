@@ -81,7 +81,7 @@ export function ScenePanel() {
             <HugeiconsIcon icon={CubeIcon} size={14} />
           </Button>
           <Button variant="ghost" size="icon" className="size-6" onClick={handleAddSphere} title="Add Sphere">
-            <HugeiconsIcon icon={Circle01Icon} size={14} />
+            <HugeiconsIcon icon={CircleIcon} size={14} />
           </Button>
           <Button variant="ghost" size="icon" className="size-6" onClick={handleAddCylinder} title="Add Cylinder">
             <HugeiconsIcon icon={Cylinder01Icon} size={14} />
@@ -110,7 +110,7 @@ export function ScenePanel() {
           <HugeiconsIcon icon={CubeIcon} size={14} />
         </Button>
         <Button variant="ghost" size="icon" className="size-6" onClick={handleAddSphere} title="Add Sphere">
-          <HugeiconsIcon icon={Circle01Icon} size={14} />
+          <HugeiconsIcon icon={CircleIcon} size={14} />
         </Button>
         <Button variant="ghost" size="icon" className="size-6" onClick={handleAddCylinder} title="Add Cylinder">
           <HugeiconsIcon icon={Cylinder01Icon} size={14} />
@@ -173,9 +173,9 @@ function ObjectIcon({ type }: { type: string }) {
     case "Mesh":
       return <HugeiconsIcon icon={CubeIcon} size={14} className="text-blue-400" />
     case "Curve":
-      return <HugeiconsIcon icon={Circle01Icon} size={14} className="text-green-400" />
+      return <HugeiconsIcon icon={CircleIcon} size={14} className="text-green-400" />
     case "Light":
-      return <HugeiconsIcon icon={Circle01Icon} size={14} className="text-yellow-400" />
+      return <HugeiconsIcon icon={CircleIcon} size={14} className="text-yellow-400" />
     case "Camera":
       return <HugeiconsIcon icon={ViewIcon} size={14} className="text-purple-400" />
     default:

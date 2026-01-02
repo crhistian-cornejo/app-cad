@@ -7,27 +7,34 @@
 //!
 //! The application supports two rendering modes:
 //!
-//! 1. **Embedded Mode** (preferred): Uses an embedded child window with wgpu 
+//! 1. **Embedded Mode** (preferred): Uses an embedded child window with wgpu
 //!    direct rendering for 60+ FPS. The child window moves with the parent.
 //!
 //! 2. **Fallback Mode**: Uses OffscreenRenderer with base64 frame transfer.
 //!    Slower but works when native mode isn't available.
 
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
+use cadhy_cad::Shape;
 use cadhy_commands::CommandStack;
 use cadhy_viewport::{Camera, OffscreenRenderer, Scene, ViewMode};
+use uuid::Uuid;
 
 /// Central application state
 ///
 /// This is managed by Tauri and accessed via `State<AppState>` in commands.
 /// All fields use RwLock for safe concurrent access.
-/// 
+///
 /// Note: EmbeddedViewport is stored separately in the app via manage()
 /// because it needs the Runtime type parameter.
 pub struct AppState {
     /// The 3D scene graph
     pub scene: Arc<RwLock<Scene>>,
+
+    /// B-Rep shape storage for CAD operations
+    /// Maps scene object UUIDs to their OpenCASCADE shapes
+    pub shape_store: RwLock<HashMap<Uuid, Shape>>,
 
     /// Command history for undo/redo
     pub commands: RwLock<CommandStack>,
@@ -99,6 +106,7 @@ impl AppState {
     pub fn new() -> Self {
         Self {
             scene: Arc::new(RwLock::new(Scene::new())),
+            shape_store: RwLock::new(HashMap::new()),
             commands: RwLock::new(CommandStack::new()),
             dirty: RwLock::new(false),
             viewport_size: RwLock::new((1280, 720)),
@@ -106,6 +114,28 @@ impl AppState {
             renderer: RwLock::new(None),
             view_mode: RwLock::new(ViewMode::Solid),
             embedded_mode: Arc::new(RwLock::new(false)),
+        }
+    }
+
+    /// Store a B-Rep shape for a scene object
+    pub fn store_shape(&self, id: Uuid, shape: Shape) {
+        if let Ok(mut store) = self.shape_store.write() {
+            store.insert(id, shape);
+        }
+    }
+
+    /// Get a cloned shape by object ID
+    pub fn get_shape(&self, id: Uuid) -> Option<Shape> {
+        self.shape_store
+            .read()
+            .ok()
+            .and_then(|store| store.get(&id).cloned())
+    }
+
+    /// Remove a shape from storage
+    pub fn remove_shape(&self, id: Uuid) {
+        if let Ok(mut store) = self.shape_store.write() {
+            store.remove(&id);
         }
     }
 

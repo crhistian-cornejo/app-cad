@@ -19,11 +19,20 @@ pub enum BridgeError {
     #[error("Command error: {0}")]
     Command(#[from] cadhy_commands::CommandError),
 
+    #[error("CAD operation error: {0}")]
+    CadOperation(String),
+
     #[error("Object not found: {0}")]
     ObjectNotFound(uuid::Uuid),
 
     #[error("Invalid parameter: {0}")]
     InvalidParameter(String),
+
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
+
+    #[error("Not initialized: {0}")]
+    NotInitialized(String),
 
     #[error("State lock error: {0}")]
     StateLock(String),

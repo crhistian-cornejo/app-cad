@@ -43,6 +43,7 @@ tracing.workspace = true
 # Internal crates
 cadhy-viewport.workspace = true
 cadhy-commands.workspace = true
+cadhy-cad.workspace = true
 # cadhy-kernel.workspace = true  # TODO: Enable when OCCT is configured
 # cadhy-hydraulics.workspace = true  # TODO: Enable when needed
 

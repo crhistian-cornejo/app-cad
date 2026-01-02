@@ -1,10 +1,12 @@
 //! Picking render pipeline - renders objects with unique colors for selection
 
-use wgpu::{Device, RenderPipeline, TextureFormat};
+use wgpu::{BindGroupLayout, Device, RenderPipeline, TextureFormat};
 
 /// Picking pipeline for GPU-based object selection
 pub struct PickingPipeline {
     pub pipeline: RenderPipeline,
+    pub camera_layout: BindGroupLayout,
+    pub model_layout: BindGroupLayout,
 }
 
 impl PickingPipeline {
@@ -14,9 +16,40 @@ impl PickingPipeline {
             source: wgpu::ShaderSource::Wgsl(include_str!("picking.wgsl").into()),
         });
 
+        // Camera uniform bind group layout (same as shaded pipeline)
+        let camera_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Picking Camera Layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+
+        // Model uniform bind group layout - needs VERTEX_FRAGMENT because
+        // the fragment shader reads model.pick_color
+        let model_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Picking Model Layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Picking Pipeline Layout"),
-            bind_group_layouts: &[],
+            bind_group_layouts: &[&camera_layout, &model_layout],
             push_constant_ranges: &[],
         });
 
@@ -56,6 +89,10 @@ impl PickingPipeline {
             cache: None,
         });
 
-        Self { pipeline }
+        Self {
+            pipeline,
+            camera_layout,
+            model_layout,
+        }
     }
 }

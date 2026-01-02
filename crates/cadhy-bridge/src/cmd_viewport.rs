@@ -753,6 +753,21 @@ pub struct FpsStatsDto {
     pub frame_time_ms: f64,
 }
 
+/// Pick result DTO for frontend
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "type")]
+pub enum PickResultDto {
+    /// Nothing was picked (background)
+    #[serde(rename = "none")]
+    None,
+    /// A gizmo axis was picked
+    #[serde(rename = "gizmo")]
+    Gizmo { axis: String },
+    /// A scene object was picked
+    #[serde(rename = "object")]
+    Object { id: uuid::Uuid },
+}
+
 /// Get current FPS statistics from the embedded viewport
 #[tauri::command]
 pub async fn viewport_get_fps<R: Runtime>(
@@ -1035,4 +1050,102 @@ pub async fn viewport_overlay_set_view_mode<R: Runtime>(
 
     // Fallback
     viewport_set_view_mode(state, mode).await
+}
+
+/// Set camera position and target in WgpuOverlay
+#[tauri::command]
+pub async fn viewport_overlay_set_camera<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    position: [f32; 3],
+    target: [f32; 3],
+) -> BridgeResult<()> {
+    // Try WgpuOverlay first
+    if let Some(overlay_state) = app.try_state::<WgpuOverlayState>() {
+        if let Ok(guard) = overlay_state.read() {
+            if let Some(overlay) = guard.as_ref() {
+                let _ = overlay.send(RenderMessage::SetCamera { position, target });
+                return Ok(());
+            }
+        }
+    }
+
+    // Fallback to state camera
+    viewport_set_camera(
+        state,
+        CameraDto {
+            position,
+            target,
+            up: [0.0, 1.0, 0.0],
+            fov: 45.0,
+            near: 0.1,
+            far: 1000.0,
+        },
+    )
+    .await
+}
+
+/// Pick object or gizmo at screen coordinates in WgpuOverlay
+#[tauri::command]
+pub async fn viewport_overlay_pick<R: Runtime>(
+    app: AppHandle<R>,
+    x: u32,
+    y: u32,
+) -> BridgeResult<PickResultDto> {
+    if let Some(overlay_state) = app.try_state::<WgpuOverlayState>() {
+        if let Ok(guard) = overlay_state.read() {
+            if let Some(overlay) = guard.as_ref() {
+                let pick_result = overlay
+                    .pick(x, y)
+                    .map_err(|e| crate::error::BridgeError::Render(e))?;
+
+                // Convert PickResult to PickResultDto
+                use cadhy_viewport::{GizmoAxis, PickResult};
+                return Ok(match pick_result {
+                    PickResult::None => PickResultDto::None,
+                    PickResult::Gizmo(axis) => PickResultDto::Gizmo {
+                        axis: match axis {
+                            GizmoAxis::X => "x".to_string(),
+                            GizmoAxis::Y => "y".to_string(),
+                            GizmoAxis::Z => "z".to_string(),
+                            GizmoAxis::XY => "xy".to_string(),
+                            GizmoAxis::XZ => "xz".to_string(),
+                            GizmoAxis::YZ => "yz".to_string(),
+                            GizmoAxis::All => "all".to_string(),
+                            GizmoAxis::None => "none".to_string(),
+                        },
+                    },
+                    PickResult::Object(id) => PickResultDto::Object { id },
+                });
+            }
+        }
+    }
+    Ok(PickResultDto::None)
+}
+
+/// Set gizmo mode (translate, rotate, scale) in WgpuOverlay
+#[tauri::command]
+pub async fn viewport_overlay_set_gizmo_mode<R: Runtime>(
+    app: AppHandle<R>,
+    mode: String,
+) -> BridgeResult<()> {
+    let gizmo_mode = match mode.to_lowercase().as_str() {
+        "translate" | "move" => cadhy_viewport::GizmoMode::Translate,
+        "rotate" => cadhy_viewport::GizmoMode::Rotate,
+        "scale" => cadhy_viewport::GizmoMode::Scale,
+        _ => return Err(crate::error::BridgeError::InvalidInput(
+            format!("Invalid gizmo mode: {}. Use 'translate', 'rotate', or 'scale'", mode)
+        )),
+    };
+
+    if let Some(overlay_state) = app.try_state::<WgpuOverlayState>() {
+        if let Ok(guard) = overlay_state.read() {
+            if let Some(overlay) = guard.as_ref() {
+                return overlay
+                    .set_gizmo_mode(gizmo_mode)
+                    .map_err(|e| crate::error::BridgeError::Render(e));
+            }
+        }
+    }
+    Err(crate::error::BridgeError::NotInitialized("WgpuOverlay not initialized".to_string()))
 }

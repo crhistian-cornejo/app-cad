@@ -39,6 +39,7 @@ mod dto;
 mod error;
 mod state;
 
+pub mod cmd_cad;
 pub mod cmd_overlay;
 pub mod cmd_project;
 pub mod cmd_scene;
@@ -106,6 +107,9 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
             cmd_viewport::viewport_overlay_zoom,
             cmd_viewport::viewport_overlay_reset_camera,
             cmd_viewport::viewport_overlay_set_view_mode,
+            cmd_viewport::viewport_overlay_set_camera,
+            cmd_viewport::viewport_overlay_pick,
+            cmd_viewport::viewport_overlay_set_gizmo_mode,
             // Scene commands
             cmd_scene::scene_get_objects,
             cmd_scene::scene_add_object,
@@ -117,6 +121,20 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
             cmd_scene::scene_get_selection,
             cmd_scene::scene_set_transform,
             cmd_scene::scene_get_transform,
+            // CAD commands (B-Rep operations)
+            cmd_cad::cad_create_primitive,
+            cmd_cad::cad_boolean,
+            cmd_cad::cad_fuse,
+            cmd_cad::cad_cut,
+            cmd_cad::cad_common,
+            cmd_cad::cad_fillet,
+            cmd_cad::cad_chamfer,
+            cmd_cad::cad_shell,
+            cmd_cad::cad_offset,
+            cmd_cad::cad_translate,
+            cmd_cad::cad_rotate,
+            cmd_cad::cad_mirror,
+            cmd_cad::cad_scale,
             // Overlay mode commands (inverted architecture: wgpu main + webview children)
             cmd_overlay::overlay_init,
             cmd_overlay::overlay_get_viewport_bounds,

@@ -30,6 +30,7 @@ use tauri::{
     window::WindowBuilder,
     webview::WebviewBuilder,
     WebviewUrl, LogicalPosition, LogicalSize,
+    TitleBarStyle,
 };
 
 use cadhy_viewport::{Camera, NativeViewport, Projection, Scene, ViewMode};
@@ -196,17 +197,40 @@ pub fn run() {
 
             // === STEP 1: Create RAW Window (no webview) ===
             // This window will host the wgpu surface
-            let window = WindowBuilder::new(&app_handle, "main")
-                .title("CADHY")
-                .inner_size(1400.0, 900.0)
-                .min_inner_size(800.0, 600.0)
-                .resizable(true)
-                .decorations(true)
-                .transparent(true) // IMPORTANT: Allow transparency for webview overlay
-                .visible(true)
-                .center()
-                .build()
-                .expect("Failed to create main window");
+            // Configure titlebar for macOS traffic lights
+            #[cfg(target_os = "macos")]
+            let window = {
+                let w = WindowBuilder::new(&app_handle, "main")
+                    .title("CADHY")
+                    .inner_size(1400.0, 900.0)
+                    .min_inner_size(800.0, 600.0)
+                    .resizable(true)
+                    .decorations(true)
+                    .transparent(true)
+                    .visible(true)
+                    .center()
+                    .title_bar_style(TitleBarStyle::Overlay)
+                    .hidden_title(true)
+                    .build()
+                    .expect("Failed to create main window");
+
+                w
+            };
+
+            #[cfg(not(target_os = "macos"))]
+            let window = {
+                WindowBuilder::new(&app_handle, "main")
+                    .title("CADHY")
+                    .inner_size(1400.0, 900.0)
+                    .min_inner_size(800.0, 600.0)
+                    .resizable(true)
+                    .decorations(true)
+                    .transparent(true)
+                    .visible(true)
+                    .center()
+                    .build()
+                    .expect("Failed to create main window")
+            };
 
             println!("[CADHY] Raw window created successfully");
 

@@ -28,12 +28,49 @@
 use std::sync::Arc;
 
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
+use uuid::Uuid;
 use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration, TextureFormat};
 
 use crate::camera::Camera;
 use crate::error::{ViewportError, ViewportResult};
+use crate::mesh::{Gizmo, GizmoAxis, GizmoMode, GpuGizmo};
+use crate::picking::PickingBuffer;
+use crate::pipelines::{GizmoBuffer, GizmoPipeline, GizmoUniform, PickingPipeline};
 use crate::render_context::RenderContext;
 use crate::scene::Scene;
+
+/// Result of picking at a screen coordinate
+#[derive(Debug, Clone)]
+pub enum PickResult {
+    /// Nothing was picked (background)
+    None,
+    /// A gizmo axis was picked
+    Gizmo(GizmoAxis),
+    /// A scene object was picked
+    Object(Uuid),
+}
+
+/// Model uniform for picking - includes pick color
+#[repr(C)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct PickModelUniform {
+    pub model: [[f32; 4]; 4],
+    pub pick_color: [f32; 4],
+}
+
+impl PickModelUniform {
+    pub fn new(model_matrix: glam::Mat4, pick_color: [u8; 4]) -> Self {
+        Self {
+            model: model_matrix.to_cols_array_2d(),
+            pick_color: [
+                pick_color[0] as f32 / 255.0,
+                pick_color[1] as f32 / 255.0,
+                pick_color[2] as f32 / 255.0,
+                pick_color[3] as f32 / 255.0,
+            ],
+        }
+    }
+}
 
 /// High-performance viewport that renders directly to a native window surface.
 ///
@@ -49,6 +86,26 @@ pub struct NativeViewport {
     depth_view: wgpu::TextureView,
     width: u32,
     height: u32,
+    // Picking support
+    picking_pipeline: PickingPipeline,
+    picking_buffer: PickingBuffer,
+    picking_depth_texture: wgpu::Texture,
+    picking_depth_view: wgpu::TextureView,
+    picking_camera_buffer: wgpu::Buffer,
+    picking_camera_bind_group: wgpu::BindGroup,
+    picking_model_buffer: wgpu::Buffer,
+    picking_model_bind_group: wgpu::BindGroup,
+    // Gizmo support (optional - may fail on some systems)
+    gizmo: Option<GizmoResources>,
+    pub gizmo_mode: GizmoMode,
+}
+
+/// Gizmo rendering resources (grouped for optional initialization)
+pub struct GizmoResources {
+    pub pipeline: GizmoPipeline,
+    pub meshes: GpuGizmo,
+    pub buffer: GizmoBuffer,
+    pub camera_bind_group: wgpu::BindGroup,
 }
 
 impl NativeViewport {
@@ -184,6 +241,54 @@ impl NativeViewport {
         tracing::info!("[NativeViewport::new] Creating render context with pipelines...");
         let render_context = RenderContext::new(&device, surface_format);
 
+        // Create picking resources
+        tracing::info!("[NativeViewport::new] Creating picking pipeline and buffer...");
+        let picking_pipeline = PickingPipeline::new(&device);
+        let picking_buffer = PickingBuffer::new(&device, width, height);
+        let (picking_depth_texture, picking_depth_view) = Self::create_depth_texture(&device, width, height);
+
+        // Create picking uniform buffers
+        let picking_camera_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Picking Camera Buffer"),
+            size: std::mem::size_of::<crate::pipelines::CameraUniform>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let picking_camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Picking Camera Bind Group"),
+            layout: &picking_pipeline.camera_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: picking_camera_buffer.as_entire_binding(),
+            }],
+        });
+
+        let picking_model_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Picking Model Buffer"),
+            size: std::mem::size_of::<PickModelUniform>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let picking_model_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Picking Model Bind Group"),
+            layout: &picking_pipeline.model_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: picking_model_buffer.as_entire_binding(),
+            }],
+        });
+
+        // Create gizmo resources (optional - may fail on some systems)
+        // We use a helper function that returns Option to gracefully handle failures
+        let gizmo = Self::try_init_gizmo(&device, surface_format, &picking_camera_buffer);
+        if gizmo.is_some() {
+            tracing::info!("[NativeViewport::new] Gizmo initialized successfully");
+        } else {
+            tracing::warn!("[NativeViewport::new] Gizmo initialization failed - gizmos disabled");
+        }
+
         let device = Arc::new(device);
         let queue = Arc::new(queue);
 
@@ -198,6 +303,16 @@ impl NativeViewport {
             depth_view,
             width,
             height,
+            picking_pipeline,
+            picking_buffer,
+            picking_depth_texture,
+            picking_depth_view,
+            picking_camera_buffer,
+            picking_camera_bind_group,
+            picking_model_buffer,
+            picking_model_bind_group,
+            gizmo,
+            gizmo_mode: GizmoMode::Translate,
         })
     }
 
@@ -226,6 +341,51 @@ impl NativeViewport {
         (texture, view)
     }
 
+    /// Try to initialize gizmo resources
+    /// Returns None if initialization fails for any reason
+    fn try_init_gizmo(
+        device: &Device,
+        surface_format: TextureFormat,
+        picking_camera_buffer: &wgpu::Buffer,
+    ) -> Option<GizmoResources> {
+        tracing::debug!("[try_init_gizmo] Creating gizmo pipeline...");
+
+        // Create the gizmo pipeline (shader compilation)
+        let pipeline = GizmoPipeline::new(device, surface_format);
+        tracing::debug!("[try_init_gizmo] Gizmo pipeline created");
+
+        // Create gizmo mesh data
+        tracing::debug!("[try_init_gizmo] Creating gizmo mesh...");
+        let gizmo_cpu = Gizmo::new();
+        tracing::debug!("[try_init_gizmo] Uploading gizmo mesh to GPU...");
+        let meshes = gizmo_cpu.upload(device);
+        tracing::debug!("[try_init_gizmo] Gizmo mesh uploaded");
+
+        // Create gizmo uniform buffer
+        tracing::debug!("[try_init_gizmo] Creating gizmo uniform buffer...");
+        let buffer = GizmoBuffer::new(device, &pipeline.gizmo_layout);
+        tracing::debug!("[try_init_gizmo] Gizmo uniform buffer created");
+
+        // Create camera bind group for gizmo (reuse picking camera buffer)
+        tracing::debug!("[try_init_gizmo] Creating camera bind group...");
+        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Gizmo Camera Bind Group"),
+            layout: &pipeline.camera_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: picking_camera_buffer.as_entire_binding(),
+            }],
+        });
+        tracing::debug!("[try_init_gizmo] Gizmo initialization complete");
+
+        Some(GizmoResources {
+            pipeline,
+            meshes,
+            buffer,
+            camera_bind_group,
+        })
+    }
+
     /// Resize the viewport
     pub fn resize(&mut self, width: u32, height: u32) {
         if width == 0 || height == 0 {
@@ -247,6 +407,12 @@ impl NativeViewport {
         let (depth_texture, depth_view) = Self::create_depth_texture(&self.device, width, height);
         self.depth_texture = depth_texture;
         self.depth_view = depth_view;
+
+        // Recreate picking resources
+        self.picking_buffer.resize(&self.device, width, height);
+        let (picking_depth_texture, picking_depth_view) = Self::create_depth_texture(&self.device, width, height);
+        self.picking_depth_texture = picking_depth_texture;
+        self.picking_depth_view = picking_depth_view;
     }
 
     /// Render a frame directly to the window surface
@@ -309,6 +475,154 @@ impl NativeViewport {
             self.render_context.render(&mut render_pass, scene, &self.queue);
         }
 
+        // Render gizmo if there's a selection AND gizmo resources are available
+        if !scene.selection.is_empty() {
+            if let Some(ref gizmo) = self.gizmo {
+                // Get center of selection for gizmo position
+                let gizmo_position = if let Some(first_selected) = scene.selection.first() {
+                    if let Some(obj) = scene.get(*first_selected) {
+                        obj.transform.position
+                    } else {
+                        glam::Vec3::ZERO
+                    }
+                } else {
+                    glam::Vec3::ZERO
+                };
+
+                // Calculate gizmo scale based on camera distance (constant screen size)
+                let camera_distance = (camera.position - gizmo_position).length();
+                let gizmo_scale = camera_distance * 0.15; // 15% of camera distance
+
+                // Update gizmo uniform
+                let gizmo_uniform = GizmoUniform::new(gizmo_position.to_array(), gizmo_scale);
+                gizmo.buffer.update(&self.queue, &gizmo_uniform);
+
+                // Update camera uniform for gizmo (same as picking camera buffer)
+                let camera_uniform = crate::pipelines::CameraUniform::from_matrices(
+                    camera.view_projection_matrix(),
+                    camera.position,
+                );
+                self.queue.write_buffer(
+                    &self.picking_camera_buffer,
+                    0,
+                    bytemuck::bytes_of(&camera_uniform),
+                );
+
+                // Gizmo render pass (on top of scene)
+                {
+                    let mut gizmo_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("Gizmo Render Pass"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: &view,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Load, // Don't clear, render on top
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                            view: &self.depth_view,
+                            depth_ops: Some(wgpu::Operations {
+                                load: wgpu::LoadOp::Load, // Keep existing depth
+                                store: wgpu::StoreOp::Discard, // Gizmo doesn't write depth
+                            }),
+                            stencil_ops: None,
+                        }),
+                        timestamp_writes: None,
+                        occlusion_query_set: None,
+                    });
+
+                    gizmo_pass.set_pipeline(&gizmo.pipeline.pipeline);
+                    gizmo_pass.set_bind_group(0, &gizmo.camera_bind_group, &[]);
+                    gizmo_pass.set_bind_group(1, &gizmo.buffer.bind_group, &[]);
+
+                    // Render based on gizmo mode
+                    match self.gizmo_mode {
+                        GizmoMode::Translate => {
+                            // X axis (red arrow)
+                            let x_mesh = &gizmo.meshes.translate.x_axis;
+                            gizmo_pass.set_vertex_buffer(0, x_mesh.vertex_buffer.slice(..));
+                            if x_mesh.is_indexed() {
+                                gizmo_pass.set_index_buffer(
+                                    x_mesh.index_buffer.as_ref().unwrap().slice(..),
+                                    wgpu::IndexFormat::Uint32,
+                                );
+                                gizmo_pass.draw_indexed(0..x_mesh.index_count, 0, 0..1);
+                            }
+
+                            // Y axis (green arrow)
+                            let y_mesh = &gizmo.meshes.translate.y_axis;
+                            gizmo_pass.set_vertex_buffer(0, y_mesh.vertex_buffer.slice(..));
+                            if y_mesh.is_indexed() {
+                                gizmo_pass.set_index_buffer(
+                                    y_mesh.index_buffer.as_ref().unwrap().slice(..),
+                                    wgpu::IndexFormat::Uint32,
+                                );
+                                gizmo_pass.draw_indexed(0..y_mesh.index_count, 0, 0..1);
+                            }
+
+                            // Z axis (blue arrow)
+                            let z_mesh = &gizmo.meshes.translate.z_axis;
+                            gizmo_pass.set_vertex_buffer(0, z_mesh.vertex_buffer.slice(..));
+                            if z_mesh.is_indexed() {
+                                gizmo_pass.set_index_buffer(
+                                    z_mesh.index_buffer.as_ref().unwrap().slice(..),
+                                    wgpu::IndexFormat::Uint32,
+                                );
+                                gizmo_pass.draw_indexed(0..z_mesh.index_count, 0, 0..1);
+                            }
+                        }
+                        GizmoMode::Scale => {
+                            // Similar rendering for scale gizmo axes
+                            let x_mesh = &gizmo.meshes.scale.x_axis;
+                            gizmo_pass.set_vertex_buffer(0, x_mesh.vertex_buffer.slice(..));
+                            if x_mesh.is_indexed() {
+                                gizmo_pass.set_index_buffer(
+                                    x_mesh.index_buffer.as_ref().unwrap().slice(..),
+                                    wgpu::IndexFormat::Uint32,
+                                );
+                                gizmo_pass.draw_indexed(0..x_mesh.index_count, 0, 0..1);
+                            }
+
+                            let y_mesh = &gizmo.meshes.scale.y_axis;
+                            gizmo_pass.set_vertex_buffer(0, y_mesh.vertex_buffer.slice(..));
+                            if y_mesh.is_indexed() {
+                                gizmo_pass.set_index_buffer(
+                                    y_mesh.index_buffer.as_ref().unwrap().slice(..),
+                                    wgpu::IndexFormat::Uint32,
+                                );
+                                gizmo_pass.draw_indexed(0..y_mesh.index_count, 0, 0..1);
+                            }
+
+                            let z_mesh = &gizmo.meshes.scale.z_axis;
+                            gizmo_pass.set_vertex_buffer(0, z_mesh.vertex_buffer.slice(..));
+                            if z_mesh.is_indexed() {
+                                gizmo_pass.set_index_buffer(
+                                    z_mesh.index_buffer.as_ref().unwrap().slice(..),
+                                    wgpu::IndexFormat::Uint32,
+                                );
+                                gizmo_pass.draw_indexed(0..z_mesh.index_count, 0, 0..1);
+                            }
+
+                            // Center cube
+                            let center_mesh = &gizmo.meshes.scale.center;
+                            gizmo_pass.set_vertex_buffer(0, center_mesh.vertex_buffer.slice(..));
+                            if center_mesh.is_indexed() {
+                                gizmo_pass.set_index_buffer(
+                                    center_mesh.index_buffer.as_ref().unwrap().slice(..),
+                                    wgpu::IndexFormat::Uint32,
+                                );
+                                gizmo_pass.draw_indexed(0..center_mesh.index_count, 0, 0..1);
+                            }
+                        }
+                        GizmoMode::Rotate => {
+                            // TODO: Implement rotation gizmo (circles)
+                        }
+                    }
+                }
+            }
+        }
+
         // Submit and present
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
@@ -339,5 +653,200 @@ impl NativeViewport {
     /// Get mutable reference to render context
     pub fn render_context_mut(&mut self) -> &mut RenderContext {
         &mut self.render_context
+    }
+
+    /// Pick object or gizmo at screen coordinates
+    ///
+    /// Returns what was picked at the given screen coordinates:
+    /// - `PickResult::None` if background was clicked
+    /// - `PickResult::Gizmo(axis)` if a gizmo axis was clicked
+    /// - `PickResult::Object(uuid)` if a scene object was clicked
+    pub fn pick_at(&self, scene: &Scene, camera: &Camera, x: u32, y: u32) -> ViewportResult<PickResult> {
+        if x >= self.width || y >= self.height {
+            return Ok(PickResult::None);
+        }
+
+        // Update picking camera uniform
+        let camera_uniform = crate::pipelines::CameraUniform::from_matrices(
+            camera.view_projection_matrix(),
+            camera.position,
+        );
+        self.queue.write_buffer(
+            &self.picking_camera_buffer,
+            0,
+            bytemuck::bytes_of(&camera_uniform),
+        );
+
+        // Calculate gizmo transform if there's a selection
+        let gizmo_transform = if !scene.selection.is_empty() {
+            if let Some(first_selected) = scene.selection.first() {
+                if let Some(obj) = scene.get(*first_selected) {
+                    let pos = obj.transform.position;
+                    let camera_distance = (camera.position - pos).length();
+                    let scale = camera_distance * 0.15;
+                    Some((pos, scale))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // Create picking render pass
+        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Picking Render Encoder"),
+        });
+
+        {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Picking Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &self.picking_buffer.view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.picking_depth_view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+
+            render_pass.set_pipeline(&self.picking_pipeline.pipeline);
+            render_pass.set_bind_group(0, &self.picking_camera_bind_group, &[]);
+
+            // Render each visible object with its pick color
+            for object in scene.visible_objects() {
+                if let Some(mesh) = &object.mesh {
+                    // Update model matrix and pick color
+                    let model_uniform = PickModelUniform::new(
+                        object.transform.matrix(),
+                        object.pick_color,
+                    );
+                    self.queue.write_buffer(
+                        &self.picking_model_buffer,
+                        0,
+                        bytemuck::bytes_of(&model_uniform),
+                    );
+
+                    render_pass.set_bind_group(1, &self.picking_model_bind_group, &[]);
+                    render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+
+                    if mesh.is_indexed() {
+                        render_pass.set_index_buffer(
+                            mesh.index_buffer.as_ref().unwrap().slice(..),
+                            wgpu::IndexFormat::Uint32,
+                        );
+                        render_pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                    } else {
+                        render_pass.draw(0..mesh.vertex_count, 0..1);
+                    }
+                }
+            }
+
+            // Render gizmo for picking if there's a selection and gizmo resources exist
+            if let (Some((gizmo_pos, gizmo_scale)), Some(ref gizmo)) = (gizmo_transform, &self.gizmo) {
+                // Create gizmo model matrix (scale and translate)
+                let gizmo_matrix = glam::Mat4::from_scale_rotation_translation(
+                    glam::Vec3::splat(gizmo_scale),
+                    glam::Quat::IDENTITY,
+                    gizmo_pos,
+                );
+
+                // Helper to render a gizmo axis mesh with its pick color
+                let render_gizmo_axis = |render_pass: &mut wgpu::RenderPass, mesh: &crate::mesh::GpuMesh, axis: GizmoAxis| {
+                    let pick_color = axis.pick_color();
+                    let model_uniform = PickModelUniform::new(gizmo_matrix, pick_color);
+                    self.queue.write_buffer(
+                        &self.picking_model_buffer,
+                        0,
+                        bytemuck::bytes_of(&model_uniform),
+                    );
+
+                    render_pass.set_bind_group(1, &self.picking_model_bind_group, &[]);
+                    render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+
+                    if mesh.is_indexed() {
+                        render_pass.set_index_buffer(
+                            mesh.index_buffer.as_ref().unwrap().slice(..),
+                            wgpu::IndexFormat::Uint32,
+                        );
+                        render_pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                    }
+                };
+
+                // Render based on current gizmo mode
+                match self.gizmo_mode {
+                    GizmoMode::Translate => {
+                        render_gizmo_axis(&mut render_pass, &gizmo.meshes.translate.x_axis, GizmoAxis::X);
+                        render_gizmo_axis(&mut render_pass, &gizmo.meshes.translate.y_axis, GizmoAxis::Y);
+                        render_gizmo_axis(&mut render_pass, &gizmo.meshes.translate.z_axis, GizmoAxis::Z);
+                    }
+                    GizmoMode::Scale => {
+                        render_gizmo_axis(&mut render_pass, &gizmo.meshes.scale.x_axis, GizmoAxis::X);
+                        render_gizmo_axis(&mut render_pass, &gizmo.meshes.scale.y_axis, GizmoAxis::Y);
+                        render_gizmo_axis(&mut render_pass, &gizmo.meshes.scale.z_axis, GizmoAxis::Z);
+                        render_gizmo_axis(&mut render_pass, &gizmo.meshes.scale.center, GizmoAxis::All);
+                    }
+                    GizmoMode::Rotate => {
+                        // TODO: Render rotation gizmo axes
+                    }
+                }
+            }
+        }
+
+        self.queue.submit(std::iter::once(encoder.finish()));
+
+        // Read pixel at click position
+        let pixel = self.picking_buffer.read_pixel_sync(&self.device, &self.queue, x, y)?;
+
+        // Check if background (black) was clicked
+        if pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0 {
+            return Ok(PickResult::None);
+        }
+
+        // Check for gizmo axis pick colors first (gizmo renders on top)
+        let pick_color = [pixel[0], pixel[1], pixel[2]];
+
+        // Check each gizmo axis
+        if pick_color == [255, 0, 0] {
+            return Ok(PickResult::Gizmo(GizmoAxis::X));
+        }
+        if pick_color == [0, 255, 0] {
+            return Ok(PickResult::Gizmo(GizmoAxis::Y));
+        }
+        if pick_color == [0, 0, 255] {
+            return Ok(PickResult::Gizmo(GizmoAxis::Z));
+        }
+        if pick_color == [255, 255, 0] {
+            return Ok(PickResult::Gizmo(GizmoAxis::XY));
+        }
+        if pick_color == [255, 0, 255] {
+            return Ok(PickResult::Gizmo(GizmoAxis::XZ));
+        }
+        if pick_color == [0, 255, 255] {
+            return Ok(PickResult::Gizmo(GizmoAxis::YZ));
+        }
+        if pick_color == [255, 255, 255] {
+            return Ok(PickResult::Gizmo(GizmoAxis::All));
+        }
+
+        // Find object by pick color
+        if let Some(uuid) = scene.find_by_pick_color([pixel[0], pixel[1], pixel[2]]) {
+            return Ok(PickResult::Object(uuid));
+        }
+
+        Ok(PickResult::None)
     }
 }

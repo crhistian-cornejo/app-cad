@@ -8,6 +8,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
   Toaster,
   Tooltip,
   TooltipContent,
@@ -21,10 +25,26 @@ import {
   ArrowDown01Icon,
   ArrowTurnBackwardIcon,
   ArrowTurnForwardIcon,
+  Copy01Icon,
+  Delete02Icon,
+  FloppyDiskIcon,
   FolderOpenIcon,
   Moon02Icon,
+  Scissor01Icon,
   Settings01Icon,
   Sun01Icon,
+  ClipboardIcon,
+  SquareIcon,
+  GridIcon,
+  Coordinate01Icon,
+  ViewIcon,
+  ArrowRight01Icon,
+  ArrowUp01Icon,
+  ArrowDown02Icon,
+  ArrowLeft01Icon,
+  LeftToRightBlockQuoteIcon,
+  RightToLeftBlockQuoteIcon,
+  GridViewIcon,
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { useEffect, useState, useCallback } from "react"
@@ -113,7 +133,7 @@ export function AppLayout() {
         />
 
         {/* Main content with panels */}
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 relative">
           <CollapsiblePanelLayout
             leftPanel={{
               tabs: leftPanelTabs,
@@ -126,6 +146,9 @@ export function AppLayout() {
           >
             <ViewportPanel />
           </CollapsiblePanelLayout>
+
+          {/* Floating View Toolbar */}
+          <ViewToolbar />
         </div>
 
         {/* Status Bar */}
@@ -155,11 +178,11 @@ function Titlebar({ isMacOS, theme, setTheme, onOpenSettings }: TitlebarProps) {
       data-tauri-drag-region
       className={cn(
         "relative flex shrink-0 items-center bg-background border-b border-border",
-        isMacOS ? "h-10 pl-[60px] pr-3" : "h-9 pl-3 pr-3"
+        isMacOS ? "h-10 pl-[76px] pr-3" : "h-9 pl-3 pr-3",
       )}
     >
-      {/* Left section */}
-      <div className="flex items-center gap-2 z-10" data-tauri-drag-region>
+      {/* Left section - Logo Menu Only */}
+      <div className="flex items-center z-10" data-tauri-drag-region>
         <LogoDropdown onOpenSettings={onOpenSettings} isMacOS={isMacOS} />
       </div>
 
@@ -183,10 +206,7 @@ function Titlebar({ isMacOS, theme, setTheme, onOpenSettings }: TitlebarProps) {
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               data-tauri-drag-region="false"
             >
-              <HugeiconsIcon
-                icon={theme === "dark" ? Sun01Icon : Moon02Icon}
-                size={16}
-              />
+              <HugeiconsIcon icon={theme === "dark" ? Sun01Icon : Moon02Icon} size={16} />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Toggle Theme</TooltipContent>
@@ -197,7 +217,7 @@ function Titlebar({ isMacOS, theme, setTheme, onOpenSettings }: TitlebarProps) {
 }
 
 // ============================================================================
-// LOGO DROPDOWN
+// LOGO DROPDOWN - Main App Menu
 // ============================================================================
 
 interface LogoDropdownProps {
@@ -207,6 +227,12 @@ interface LogoDropdownProps {
 
 function LogoDropdown({ onOpenSettings, isMacOS }: LogoDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const { showGrid, showAxes, setShowGrid, setShowAxes } = useLayoutStore()
+  const { projection, setProjection } = useViewportStore()
+
+  const cmdKey = isMacOS ? "⌘" : "Ctrl+"
+
+  // File actions
   const handleNewProject = useCallback(async () => {
     try {
       await projectApi.newProject()
@@ -223,12 +249,11 @@ function LogoDropdown({ onOpenSettings, isMacOS }: LogoDropdownProps) {
         multiple: false,
         filters: [
           { name: "CADHY Project", extensions: ["cadhy", "cad"] },
+          { name: "STEP Files", extensions: ["step", "stp"] },
           { name: "All Files", extensions: ["*"] },
         ],
       })
-
       if (selected) {
-        // TODO: Implement project loading
         toast.info(`Selected: ${selected}`)
       }
     } catch (e) {
@@ -236,6 +261,11 @@ function LogoDropdown({ onOpenSettings, isMacOS }: LogoDropdownProps) {
     }
   }, [])
 
+  const handleSave = useCallback(() => {
+    toast.info("Save functionality coming soon")
+  }, [])
+
+  // Edit actions
   const handleUndo = useCallback(async () => {
     try {
       await projectApi.undo()
@@ -252,42 +282,160 @@ function LogoDropdown({ onOpenSettings, isMacOS }: LogoDropdownProps) {
     }
   }, [])
 
-  const cmdKey = isMacOS ? "⌘" : "Ctrl+"
+  const handleCut = useCallback(() => toast.info("Cut coming soon"), [])
+  const handleCopy = useCallback(() => toast.info("Copy coming soon"), [])
+  const handlePaste = useCallback(() => toast.info("Paste coming soon"), [])
+  const handleDelete = useCallback(() => toast.info("Delete coming soon"), [])
+
+  // View actions
+  const handleToggleGrid = useCallback(() => setShowGrid(!showGrid), [showGrid, setShowGrid])
+  const handleToggleAxes = useCallback(() => setShowAxes(!showAxes), [showAxes, setShowAxes])
+  const handleToggleProjection = useCallback(() => {
+    setProjection(projection === "perspective" ? "orthographic" : "perspective")
+  }, [projection, setProjection])
 
   return (
     <DropdownMenu onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-1.5 pr-2 rounded-lg" data-tauri-drag-region="false">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 px-1.5 pr-2 rounded-lg"
+          data-tauri-drag-region="false"
+        >
           <img src={logoUrl} alt="CADHY" className="size-5 rounded shadow-sm" />
           <span className="text-xs font-semibold tracking-tight text-foreground/90">CADHY</span>
-          <div className={cn("transition-transform duration-200", isOpen ? "rotate-180" : "rotate-0")}>
-            <HugeiconsIcon icon={ArrowDown01Icon} size={10} className="text-muted-foreground/50 ml-0.5" />
+          <div
+            className={cn("transition-transform duration-200", isOpen ? "rotate-180" : "rotate-0")}
+          >
+            <HugeiconsIcon
+              icon={ArrowDown01Icon}
+              size={10}
+              className="text-muted-foreground/50 ml-0.5"
+            />
           </div>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-52">
-        <DropdownMenuItem onClick={handleNewProject}>
-          <HugeiconsIcon icon={Add01Icon} size={16} className="mr-2" />
-          New Project
-          <DropdownMenuShortcut>{cmdKey}N</DropdownMenuShortcut>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleOpenProject}>
-          <HugeiconsIcon icon={FolderOpenIcon} size={16} className="mr-2" />
-          Open Project
-          <DropdownMenuShortcut>{cmdKey}O</DropdownMenuShortcut>
-        </DropdownMenuItem>
+      <DropdownMenuContent align="start" className="w-56">
+        {/* === FILE SUBMENU === */}
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <HugeiconsIcon icon={FolderOpenIcon} size={16} className="mr-2" />
+            File
+          </DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent className="w-52">
+              <DropdownMenuItem onClick={handleNewProject}>
+                <HugeiconsIcon icon={Add01Icon} size={16} className="mr-2" />
+                New Project
+                <DropdownMenuShortcut>{cmdKey}N</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleOpenProject}>
+                <HugeiconsIcon icon={FolderOpenIcon} size={16} className="mr-2" />
+                Open...
+                <DropdownMenuShortcut>{cmdKey}O</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleSave}>
+                <HugeiconsIcon icon={FloppyDiskIcon} size={16} className="mr-2" />
+                Save
+                <DropdownMenuShortcut>{cmdKey}S</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSave}>
+                <HugeiconsIcon icon={FloppyDiskIcon} size={16} className="mr-2" />
+                Save As...
+                <DropdownMenuShortcut>{cmdKey}⇧S</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                Export...
+                <DropdownMenuShortcut>{cmdKey}E</DropdownMenuShortcut>
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub>
+
+        {/* === EDIT SUBMENU === */}
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <HugeiconsIcon icon={Scissor01Icon} size={16} className="mr-2" />
+            Edit
+          </DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent className="w-52">
+              <DropdownMenuItem onClick={handleUndo}>
+                <HugeiconsIcon icon={ArrowTurnBackwardIcon} size={16} className="mr-2" />
+                Undo
+                <DropdownMenuShortcut>{cmdKey}Z</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleRedo}>
+                <HugeiconsIcon icon={ArrowTurnForwardIcon} size={16} className="mr-2" />
+                Redo
+                <DropdownMenuShortcut>
+                  {cmdKey}
+                  {isMacOS ? "⇧Z" : "Y"}
+                </DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleCut}>
+                <HugeiconsIcon icon={Scissor01Icon} size={16} className="mr-2" />
+                Cut
+                <DropdownMenuShortcut>{cmdKey}X</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleCopy}>
+                <HugeiconsIcon icon={Copy01Icon} size={16} className="mr-2" />
+                Copy
+                <DropdownMenuShortcut>{cmdKey}C</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handlePaste}>
+                <HugeiconsIcon icon={ClipboardIcon} size={16} className="mr-2" />
+                Paste
+                <DropdownMenuShortcut>{cmdKey}V</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+                <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2" />
+                Delete
+                <DropdownMenuShortcut>Del</DropdownMenuShortcut>
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub>
+
+        {/* === VIEW SUBMENU === */}
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <HugeiconsIcon icon={ViewIcon} size={16} className="mr-2" />
+            View
+          </DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent className="w-52">
+              <DropdownMenuItem onClick={handleToggleProjection}>
+                <HugeiconsIcon
+                  icon={projection === "perspective" ? SquareIcon : ViewIcon}
+                  size={16}
+                  className="mr-2"
+                />
+                {projection === "perspective" ? "Orthographic" : "Perspective"}
+                <DropdownMenuShortcut>5</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleToggleGrid}>
+                <HugeiconsIcon icon={GridIcon} size={16} className="mr-2" />
+                {showGrid ? "Hide Grid" : "Show Grid"}
+                <DropdownMenuShortcut>G</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleToggleAxes}>
+                <HugeiconsIcon icon={Coordinate01Icon} size={16} className="mr-2" />
+                {showAxes ? "Hide Axes" : "Show Axes"}
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub>
+
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleUndo}>
-          <HugeiconsIcon icon={ArrowTurnBackwardIcon} size={16} className="mr-2" />
-          Undo
-          <DropdownMenuShortcut>{cmdKey}Z</DropdownMenuShortcut>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleRedo}>
-          <HugeiconsIcon icon={ArrowTurnForwardIcon} size={16} className="mr-2" />
-          Redo
-          <DropdownMenuShortcut>{cmdKey}{isMacOS ? "⇧Z" : "Y"}</DropdownMenuShortcut>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
+
+        {/* === SETTINGS === */}
         <DropdownMenuItem onClick={onOpenSettings}>
           <HugeiconsIcon icon={Settings01Icon} size={16} className="mr-2" />
           Settings
@@ -299,11 +447,78 @@ function LogoDropdown({ onOpenSettings, isMacOS }: LogoDropdownProps) {
 }
 
 // ============================================================================
+// VIEW TOOLBAR - Floating toolbar for camera views
+// ============================================================================
+
+function ViewToolbar() {
+  const { setView } = useViewportStore()
+
+  const handleSetView = useCallback(
+    (viewId: "front" | "back" | "right" | "left" | "top" | "bottom") => {
+      setView(viewId)
+      toast.success(`${viewId.charAt(0).toUpperCase() + viewId.slice(1)} view`)
+    },
+    [setView],
+  )
+
+  return (
+    <div className="absolute top-3 right-3 z-20">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="secondary"
+            size="icon"
+            className="size-8 shadow-md bg-background/80 backdrop-blur-sm border border-border"
+          >
+            <HugeiconsIcon icon={GridViewIcon} size={16} />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuItem onClick={() => handleSetView("front")}>
+            <HugeiconsIcon icon={ArrowUp01Icon} size={16} className="mr-2" />
+            Front
+            <DropdownMenuShortcut>1</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleSetView("back")}>
+            <HugeiconsIcon icon={ArrowDown02Icon} size={16} className="mr-2" />
+            Back
+            <DropdownMenuShortcut>Ctrl+1</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => handleSetView("right")}>
+            <HugeiconsIcon icon={ArrowRight01Icon} size={16} className="mr-2" />
+            Right
+            <DropdownMenuShortcut>3</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleSetView("left")}>
+            <HugeiconsIcon icon={ArrowLeft01Icon} size={16} className="mr-2" />
+            Left
+            <DropdownMenuShortcut>Ctrl+3</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => handleSetView("top")}>
+            <HugeiconsIcon icon={LeftToRightBlockQuoteIcon} size={16} className="mr-2 rotate-90" />
+            Top
+            <DropdownMenuShortcut>7</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleSetView("bottom")}>
+            <HugeiconsIcon icon={RightToLeftBlockQuoteIcon} size={16} className="mr-2 rotate-90" />
+            Bottom
+            <DropdownMenuShortcut>Ctrl+7</DropdownMenuShortcut>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  )
+}
+
+// ============================================================================
 // STATUS BAR
 // ============================================================================
 
 function StatusBar() {
-  const { width, height, cursorPosition, fps, frameTime, viewMode, startFpsPolling } = useViewportStore()
+  const { width, height, cursorPosition, fps, frameTime, viewMode, startFpsPolling } =
+    useViewportStore()
 
   // Start FPS polling when component mounts
   useEffect(() => {
@@ -322,18 +537,28 @@ function StatusBar() {
 
       {/* Center section - Coordinates */}
       <div className="flex items-center gap-3">
-        <span>X: <span className="text-foreground">{cursorPosition.x.toFixed(2)}</span></span>
-        <span>Y: <span className="text-foreground">{cursorPosition.y.toFixed(2)}</span></span>
-        <span>Z: <span className="text-foreground">{cursorPosition.z.toFixed(2)}</span></span>
+        <span>
+          X: <span className="text-foreground">{cursorPosition.x.toFixed(2)}</span>
+        </span>
+        <span>
+          Y: <span className="text-foreground">{cursorPosition.y.toFixed(2)}</span>
+        </span>
+        <span>
+          Z: <span className="text-foreground">{cursorPosition.z.toFixed(2)}</span>
+        </span>
       </div>
 
       {/* Right section - Performance */}
       <div className="flex items-center gap-4">
-        <span>{width} x {height}</span>
+        <span>
+          {width} x {height}
+        </span>
         <span className="text-muted-foreground/60">|</span>
-        <span className={cn(
-          fps >= 30 ? "text-green-500" : fps >= 15 ? "text-yellow-500" : "text-red-500"
-        )}>
+        <span
+          className={cn(
+            fps >= 30 ? "text-green-500" : fps >= 15 ? "text-yellow-500" : "text-red-500",
+          )}
+        >
           {fps} FPS
         </span>
         <span className="text-muted-foreground/60">({frameTime.toFixed(1)}ms)</span>

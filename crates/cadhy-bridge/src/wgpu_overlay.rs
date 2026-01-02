@@ -39,7 +39,7 @@ use std::time::{Duration, Instant};
 
 use tauri::{WebviewWindow, Runtime};
 
-use cadhy_viewport::{Camera, NativeViewport, Projection, Scene, ViewMode};
+use cadhy_viewport::{Camera, GizmoMode, NativeViewport, PickResult, Projection, Scene, ViewMode};
 
 /// Messages sent to the render thread
 #[derive(Debug)]
@@ -50,8 +50,11 @@ pub enum RenderMessage {
     Zoom { delta: f32 },
     FrameAll,
     ResetCamera,
+    SetCamera { position: [f32; 3], target: [f32; 3] },
     SetViewMode(ViewMode),
+    SetGizmoMode(GizmoMode),
     UpdateScene,
+    Pick { x: u32, y: u32, response: crossbeam_channel::Sender<PickResult> },
     Stop,
 }
 
@@ -274,14 +277,46 @@ impl WgpuOverlay {
                             camera.target = glam::Vec3::ZERO;
                             camera.up = glam::Vec3::Y;
                         }
+                        RenderMessage::SetCamera { position, target } => {
+                            camera.position = glam::Vec3::from_array(position);
+                            camera.target = glam::Vec3::from_array(target);
+                            // Recalculate up vector based on new view direction
+                            let forward = (camera.target - camera.position).normalize();
+                            let right = glam::Vec3::Y.cross(forward);
+                            if right.length_squared() > 0.0001 {
+                                camera.up = forward.cross(right).normalize();
+                            } else {
+                                // Looking straight up or down, use Z as right
+                                camera.up = forward.cross(glam::Vec3::Z).normalize().cross(forward).normalize();
+                            }
+                        }
                         RenderMessage::SetViewMode(mode) => {
                             if let Ok(mut vm) = view_mode.write() {
                                 *vm = mode;
                             }
                             viewport.render_context_mut().set_view_mode(mode);
                         }
+                        RenderMessage::SetGizmoMode(mode) => {
+                            viewport.gizmo_mode = mode;
+                            tracing::debug!("Gizmo mode set to {:?}", mode);
+                        }
                         RenderMessage::UpdateScene => {
                             // Scene update - will render next frame
+                        }
+                        RenderMessage::Pick { x, y, response } => {
+                            // Perform picking
+                            let result = if let Ok(scene_guard) = scene.read() {
+                                match viewport.pick_at(&scene_guard, &camera, x, y) {
+                                    Ok(pick_result) => pick_result,
+                                    Err(e) => {
+                                        tracing::error!("Pick error: {:?}", e);
+                                        PickResult::None
+                                    }
+                                }
+                            } else {
+                                PickResult::None
+                            };
+                            let _ = response.send(result);
                         }
                         RenderMessage::Stop => {
                             running.store(false, Ordering::SeqCst);
@@ -380,6 +415,26 @@ impl WgpuOverlay {
             .read()
             .map(|s| *s)
             .unwrap_or_default()
+    }
+
+    /// Pick object or gizmo at screen coordinates
+    ///
+    /// Returns what was picked at the given screen coordinates:
+    /// - `PickResult::None` if background was clicked
+    /// - `PickResult::Gizmo(axis)` if a gizmo axis was clicked
+    /// - `PickResult::Object(uuid)` if a scene object was clicked
+    pub fn pick(&self, x: u32, y: u32) -> Result<PickResult, String> {
+        let (tx, rx) = crossbeam_channel::bounded(1);
+        self.send(RenderMessage::Pick { x, y, response: tx })?;
+
+        // Wait for pick result with timeout
+        rx.recv_timeout(Duration::from_millis(100))
+            .map_err(|e| format!("Pick timeout: {}", e))
+    }
+
+    /// Set the gizmo mode (translate, rotate, scale)
+    pub fn set_gizmo_mode(&self, mode: GizmoMode) -> Result<(), String> {
+        self.send(RenderMessage::SetGizmoMode(mode))
     }
 
     /// Stop the render loop

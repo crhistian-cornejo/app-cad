@@ -16,8 +16,8 @@ pub mod scene;
 
 pub use camera::{Camera, CameraController, Projection};
 pub use error::{ViewportError, ViewportResult};
-pub use mesh::{GpuMesh, MeshData, Vertex};
-pub use native_viewport::NativeViewport;
+pub use mesh::{GizmoAxis, GizmoMode, GpuMesh, MeshData, Vertex};
+pub use native_viewport::{NativeViewport, PickResult};
 pub use offscreen::OffscreenRenderer;
 pub use picking::{color_to_id, id_to_color, PickingBuffer};
 pub use render_context::{RenderContext, ViewMode};

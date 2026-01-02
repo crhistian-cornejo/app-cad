@@ -24,10 +24,12 @@ interface SceneActions {
   select: (ids: string[], extend?: boolean) => Promise<void>
   deselectAll: () => Promise<void>
   toggleSelection: (id: string) => Promise<void>
+  selectedObjects: () => SceneObjectDto[]
 
   // Transforms
   getTransform: (id: string) => Promise<TransformDto | null>
   setTransform: (id: string, transform: TransformDto) => Promise<void>
+  translateSelection: (dx: number, dy: number, dz: number) => Promise<void>
 
   // Polling
   startPolling: () => () => void
@@ -152,6 +154,11 @@ export const useSceneStore = create<SceneState & SceneActions>((set, get) => ({
     }
   },
 
+  selectedObjects: () => {
+    const { objects, selection } = get()
+    return objects.filter((obj) => selection.ids.includes(obj.id))
+  },
+
   getTransform: async (id) => {
     try {
       return await sceneApi.getTransform(id)
@@ -166,6 +173,32 @@ export const useSceneStore = create<SceneState & SceneActions>((set, get) => ({
       await sceneApi.setTransform(id, transform)
     } catch (e) {
       console.error("Failed to set transform:", e)
+    }
+  },
+
+  translateSelection: async (dx, dy, dz) => {
+    const { selection } = get()
+    if (selection.ids.length === 0) return
+
+    try {
+      // Update each selected object's transform
+      for (const id of selection.ids) {
+        const transform = await sceneApi.getTransform(id)
+        if (transform) {
+          // Add delta to current position
+          const newTransform: TransformDto = {
+            ...transform,
+            position: [
+              transform.position[0] + dx,
+              transform.position[1] + dy,
+              transform.position[2] + dz,
+            ],
+          }
+          await sceneApi.setTransform(id, newTransform)
+        }
+      }
+    } catch (e) {
+      console.error("Failed to translate selection:", e)
     }
   },
 
